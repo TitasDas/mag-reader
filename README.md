@@ -67,6 +67,17 @@ profile where you want Readstand.
 - Everything stored locally, no accounts, no server
 - Search across titles and previews
 
+## Roadmap
+
+Planned, not yet built:
+
+- **Novelty-based recommendations**: surface articles that are genuinely new or
+  different from what you have already read, rather than only the most recent.
+- **Automatic feed detection from any link**: find the right feed for any URL
+  you paste, even when a page hides or omits its autodiscovery tag.
+- **UI/UX improvements**: keyboard navigation, and refinements to the reading
+  pane and source management.
+
 ## Develop
 
 ```bash
