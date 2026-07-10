@@ -1,4 +1,5 @@
 import { Readability } from '@mozilla/readability'
+import { feedFetch } from './net.js'
 
 const FETCH_TIMEOUT_MS = 15000
 
@@ -62,7 +63,7 @@ export async function fetchReadable(url) {
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   let html
   try {
-    const res = await fetch(url, { redirect: 'follow', signal: controller.signal })
+    const res = await feedFetch(url, { redirect: 'follow', signal: controller.signal })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     html = await res.text()
   } catch (err) {

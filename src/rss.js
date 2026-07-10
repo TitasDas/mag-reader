@@ -1,5 +1,6 @@
 // Minimal RSS 2.0 + Atom parser built on the browser's DOMParser. No deps.
 // Returns a normalized array of article objects.
+import { feedFetch } from './net.js'
 
 function text(node, sel) {
   const el = node.querySelector(sel)
@@ -89,7 +90,7 @@ export function parseJsonFeed(jsonString, source, feedUrl) {
 
 // Fetch + parse one feed. Extension pages with host_permissions bypass CORS.
 export async function fetchFeed(feed) {
-  const res = await fetch(feed.url, { redirect: 'follow' })
+  const res = await feedFetch(feed.url, { redirect: 'follow' })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const ct = (res.headers.get('content-type') || '').toLowerCase()
   const body = await res.text()

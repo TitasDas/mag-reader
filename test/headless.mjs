@@ -109,7 +109,22 @@ try {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
 
   console.log('\nApp shell')
-  check('brand reads "Readstand"', (await page.locator('.brand').innerText()) === 'Readstand')
+  check('brand reads "Readstand"', (await page.locator('.brand').innerText()).includes('Readstand'))
+
+  console.log('\nPWA wiring')
+  check('manifest is linked', (await page.locator('link[rel="manifest"]').count()) === 1)
+  const manifestOk = (await fetch(BASE + 'manifest.webmanifest')).ok
+  check('manifest.webmanifest served', manifestOk)
+  await page.waitForLoadState('load')
+  let swRegistered = false
+  for (let i = 0; i < 20 && !swRegistered; i++) {
+    swRegistered = await page.evaluate(async () => {
+      if (!('serviceWorker' in navigator)) return false
+      return !!(await navigator.serviceWorker.getRegistration())
+    })
+    if (!swRegistered) await page.waitForTimeout(200)
+  }
+  check('service worker registers on the web build', swRegistered)
 
   console.log('\nArticles render from feeds')
   await page.locator('.item').first().waitFor({ timeout: 15000 })

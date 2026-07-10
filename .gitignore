@@ -4,3 +4,6 @@ dist/
 .DS_Store
 .vite/
 *.zip
+.env
+.env.local
+.env.*.local

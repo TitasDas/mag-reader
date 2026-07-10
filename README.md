@@ -64,8 +64,32 @@ profile where you want Readstand.
 - **Pick the right feed** when a site exposes several (posts, comments, podcast)
 - **OPML import / export** to back up your subscriptions or move them between
   readers
+- **Responsive** layout for phone and tablet: a slide-in sources drawer, and a
+  single-pane list ↔ reader drill-down on phones
+- **Installable as a PWA** on phones/tablets/desktop (add to home screen),
+  with an offline app shell
 - Everything stored locally, no accounts, no server
 - Search across titles and previews
+
+## Use it on a phone or tablet (PWA)
+
+A Chrome *extension* can't install on Android/iOS, so for mobile Readstand also
+builds as an installable web app (PWA) from the same code.
+
+1. **Feeds need a proxy on the web.** Unlike the extension, a web page can't read
+   cross-origin feeds, so deploy the tiny CORS proxy in [`proxy/worker.js`](proxy/worker.js)
+   (a Cloudflare Worker — instructions are in that file).
+2. **Build pointing at it and host `dist/` over HTTPS:**
+   ```bash
+   VITE_FEED_PROXY="https://readstand-proxy.<you>.workers.dev/?url=" npm run build
+   # deploy dist/ to any static host (Cloudflare Pages, Netlify, Vercel, GitHub Pages)
+   ```
+3. Open the hosted URL on your device and **Add to Home Screen**. It launches
+   full-screen and works offline for already-loaded content.
+
+The build with no `VITE_FEED_PROXY` still works as the extension (which fetches
+directly). Feed auto-discovery is most reliable in the extension; on the hosted
+PWA, pasting a direct feed URL is the surest path.
 
 ## Roadmap
 

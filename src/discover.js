@@ -3,6 +3,7 @@
 // <link rel="alternate" type="application/rss+xml"> in the page HTML, then
 // (3) probe common feed paths as a fallback. Runs in an extension page, so it
 // has DOMParser and cross-origin fetch via host_permissions.
+import { feedFetch } from './net.js'
 
 const FALLBACK_PATHS = [
   '/feed',
@@ -69,7 +70,7 @@ export async function discoverFeeds(input) {
 
   let res, body, finalUrl
   try {
-    res = await fetch(startUrl, { redirect: 'follow' })
+    res = await feedFetch(startUrl, { redirect: 'follow' })
     finalUrl = res.url || startUrl
     body = await res.text()
   } catch {
@@ -119,7 +120,7 @@ export async function discoverFeeds(input) {
   for (const path of FALLBACK_PATHS) {
     const probe = origin + path
     try {
-      const r = await fetch(probe, { redirect: 'follow' })
+      const r = await feedFetch(probe, { redirect: 'follow' })
       if (!r.ok) continue
       const t = await r.text()
       const tct = r.headers.get('content-type') || ''
