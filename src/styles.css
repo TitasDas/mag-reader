@@ -1,0 +1,350 @@
+:root {
+  --bg: #ffffff;
+  --bg-alt: #f6f6f4;
+  --bg-sel: #eceef2;
+  --border: #e3e3df;
+  --text: #1a1a1a;
+  --muted: #6b6b6b;
+  --accent: #b5451c;
+  --sidebar-w: 240px;
+  --list-w: 360px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16171a;
+    --bg-alt: #1d1e22;
+    --bg-sel: #2a2c31;
+    --border: #2e3036;
+    --text: #e9e9e6;
+    --muted: #9a9aa0;
+    --accent: #e8794c;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) var(--list-w) 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ---- sidebar ---- */
+.sidebar {
+  background: var(--bg-alt);
+  border-right: 1px solid var(--border);
+  padding: 16px 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.brand {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.brand-mark {
+  color: var(--accent);
+}
+.refresh {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.refresh:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chip {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.sources {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sources-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  margin: 6px 4px 4px;
+}
+.source-row {
+  display: flex;
+  align-items: center;
+}
+.source {
+  flex: 1;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.source:hover {
+  background: var(--bg-sel);
+}
+.source.active {
+  background: var(--bg-sel);
+  font-weight: 600;
+}
+.warn {
+  color: #d08b00;
+}
+.remove {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 6px;
+}
+.remove:hover {
+  color: var(--accent);
+}
+.add-feed {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+.add-feed input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.add-feed button {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0 10px;
+  cursor: pointer;
+}
+.link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+.link:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+/* ---- list ---- */
+.list {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.list-head {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  z-index: 1;
+}
+.search {
+  flex: 1;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.item {
+  position: relative;
+  padding: 14px 40px 14px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.item:hover {
+  background: var(--bg-alt);
+}
+.item.sel {
+  background: var(--bg-sel);
+}
+.item.read .item-title {
+  color: var(--muted);
+  font-weight: 500;
+}
+.item-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.item-source {
+  font-weight: 600;
+  color: var(--accent);
+}
+.item-title {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+.item-preview {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.save {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+}
+.save.on {
+  color: var(--accent);
+}
+
+/* ---- reader ---- */
+.reader {
+  overflow-y: auto;
+  padding: 40px 48px;
+}
+.reader article {
+  max-width: 680px;
+  margin: 0 auto;
+}
+.reader-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.reader-title {
+  font-size: 30px;
+  line-height: 1.2;
+  margin: 10px 0 16px;
+  letter-spacing: -0.5px;
+}
+.reader-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.btn {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn.ghost {
+  background: none;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.reader-body {
+  font-size: 17px;
+  line-height: 1.7;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+.reader-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+.reader-body a {
+  color: var(--accent);
+}
+.reader-body p {
+  margin: 0 0 1.1em;
+}
+
+.empty {
+  color: var(--muted);
+  padding: 40px 20px;
+  text-align: center;
+  font-size: 14px;
+}
+.reader-empty {
+  margin-top: 20vh;
+}
+
+/* Narrow windows (e.g. small extension popups): collapse the reader pane. */
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: 200px 1fr;
+  }
+  .reader {
+    display: none;
+  }
+}

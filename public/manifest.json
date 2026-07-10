@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Reader — Magazine Aggregator",
+  "version": "0.1.0",
+  "description": "A clean unified feed of the magazines you follow.",
+  "action": {
+    "default_title": "Open Reader"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["storage"],
+  "host_permissions": ["<all_urls>"]
+}
