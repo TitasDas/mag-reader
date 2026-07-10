@@ -47,6 +47,7 @@ export default function App() {
   const [showManage, setShowManage] = useState(false)
   const fileRef = useRef(null)
   const [enhanced, setEnhanced] = useState({}) // id -> {status, html, error}
+  const [readerView, setReaderView] = useState({}) // id -> bool (show extracted)
   const [showImages, setShowImages] = useState(true)
 
   // ---- persistence helpers -------------------------------------------------
@@ -155,17 +156,34 @@ export default function App() {
     else next[a.id] = Date.now()
     persistSaved(next)
   }
-  async function runReaderMode(a) {
+  async function toggleReaderMode(a) {
+    // Already fetched: just flip between the extracted view and the feed view,
+    // no re-fetch.
+    if (enhanced[a.id]?.status === 'done') {
+      setReaderView((v) => ({ ...v, [a.id]: !v[a.id] }))
+      return
+    }
     setEnhanced((e) => ({ ...e, [a.id]: { status: 'loading' } }))
     try {
       const art = await fetchReadable(a.link)
       setEnhanced((e) => ({ ...e, [a.id]: { status: 'done', html: art.content } }))
+      setReaderView((v) => ({ ...v, [a.id]: true }))
     } catch (err) {
       setEnhanced((e) => ({
         ...e,
         [a.id]: { status: 'error', error: err?.message || 'failed' },
       }))
     }
+  }
+  // Keep in-article links from navigating the reader tab away: open them in a
+  // new tab instead. Works for both feed content and reader-mode content.
+  function onReaderClick(e) {
+    const a = e.target.closest?.('a[href]')
+    if (!a) return
+    const href = a.getAttribute('href')
+    if (!href || href.startsWith('#')) return
+    e.preventDefault()
+    window.open(a.href, '_blank', 'noopener,noreferrer')
   }
   function markAllRead() {
     const next = { ...readIds }
@@ -426,15 +444,19 @@ export default function App() {
                 Open original ↗
               </a>
               <button
-                className="btn ghost"
-                onClick={() => runReaderMode(selected)}
+                className={`btn ghost ${
+                  enhanced[selected.id]?.status === 'done' && readerView[selected.id]
+                    ? 'active'
+                    : ''
+                }`}
+                onClick={() => toggleReaderMode(selected)}
                 disabled={enhanced[selected.id]?.status === 'loading'}
+                aria-pressed={
+                  enhanced[selected.id]?.status === 'done' && !!readerView[selected.id]
+                }
+                title="Extract the full readable article from the page"
               >
-                {enhanced[selected.id]?.status === 'loading'
-                  ? 'Fetching...'
-                  : enhanced[selected.id]?.status === 'done'
-                  ? '✓ Reader mode'
-                  : 'Reader mode'}
+                {enhanced[selected.id]?.status === 'loading' ? 'Fetching...' : 'Reader mode'}
               </button>
               <a
                 href={archiveUrl(selected.link)}
@@ -445,11 +467,12 @@ export default function App() {
                 Archived snapshot ↗
               </a>
               <button
-                className="btn ghost"
+                className={`btn ghost ${!showImages ? 'active' : ''}`}
                 onClick={toggleImages}
-                title="Toggle images on or off"
+                aria-pressed={!showImages}
+                title={showImages ? 'Switch to text only' : 'Show images again'}
               >
-                {showImages ? '🖼 Images on' : '𝐓 Text only'}
+                Text only
               </button>
               <button className="btn ghost" onClick={() => toggleSaved(selected)}>
                 {savedIds[selected.id] ? '★ Saved' : '☆ Save'}
@@ -463,9 +486,12 @@ export default function App() {
             )}
             <div
               className={`reader-body ${showImages ? '' : 'text-only'}`}
+              onClick={onReaderClick}
               dangerouslySetInnerHTML={{
                 __html:
-                  (enhanced[selected.id]?.status === 'done' && enhanced[selected.id].html) ||
+                  (enhanced[selected.id]?.status === 'done' &&
+                    readerView[selected.id] &&
+                    enhanced[selected.id].html) ||
                   selected.content ||
                   '<p>(No text in this feed. Try Reader mode or open the original.)</p>',
               }}
