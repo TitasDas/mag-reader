@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { DEFAULT_FEEDS } from './feeds.js'
 import { fetchFeed } from './rss.js'
 import { fetchReadable, archiveUrl } from './readerMode.js'
+import { discoverFeed } from './discover.js'
 import * as store from './storage.js'
 
 const FILTERS = [
@@ -40,6 +41,7 @@ export default function App() {
   const [readIds, setReadIds] = useState({})
   const [savedIds, setSavedIds] = useState({})
   const [newFeedUrl, setNewFeedUrl] = useState('')
+  const [addStatus, setAddStatus] = useState(null) // {type:'loading'|'error', msg}
   const [showManage, setShowManage] = useState(false)
   const [enhanced, setEnhanced] = useState({}) // id -> {status, html, error}
   const [showImages, setShowImages] = useState(true)
@@ -102,6 +104,17 @@ export default function App() {
       setReadIds(read || {})
       setSavedIds(saved || {})
       setShowImages(imgs !== false)
+      // Persist the defaults on first run so the background worker can see them.
+      if (!savedFeeds || !savedFeeds.length) store.set('feeds', feedList)
+      // Opening the reader clears the "new posts" badge.
+      store.set('newCount', 0)
+      try {
+        if (typeof chrome !== 'undefined' && chrome.action) {
+          chrome.action.setBadgeText({ text: '' })
+        }
+      } catch {
+        /* not in extension context */
+      }
       await loadArticles(feedList)
     })()
   }, [loadArticles])
@@ -156,25 +169,26 @@ export default function App() {
     visible.forEach((a) => (next[a.id] = Date.now()))
     persistRead(next)
   }
-  function addFeed(e) {
+  async function addFeed(e) {
     e.preventDefault()
-    let url = newFeedUrl.trim()
-    if (!url) return
-    if (!/^https?:\/\//i.test(url)) url = 'https://' + url
-    if (feeds.some((f) => f.url === url)) {
-      setNewFeedUrl('')
-      return
-    }
-    let title
+    const input = newFeedUrl.trim()
+    if (!input) return
+    setAddStatus({ type: 'loading', msg: 'Finding feed…' })
     try {
-      title = new URL(url).hostname.replace(/^www\./, '')
-    } catch {
-      title = url
+      const { url, title } = await discoverFeed(input)
+      if (feeds.some((f) => f.url === url)) {
+        setAddStatus({ type: 'error', msg: `Already subscribed to ${title}` })
+        return
+      }
+      const next = [...feeds, { url, title, fullText: false }]
+      persistFeeds(next)
+      setNewFeedUrl('')
+      setAddStatus({ type: 'ok', msg: `Subscribed to ${title}` })
+      setSourceFilter(url)
+      await loadArticles(next)
+    } catch (err) {
+      setAddStatus({ type: 'error', msg: err?.message || 'could not add feed' })
     }
-    const next = [...feeds, { url, title, fullText: false }]
-    persistFeeds(next)
-    setNewFeedUrl('')
-    loadArticles(next)
   }
   function removeFeed(url) {
     const next = feeds.filter((f) => f.url !== url)
@@ -243,10 +257,16 @@ export default function App() {
             <input
               value={newFeedUrl}
               onChange={(e) => setNewFeedUrl(e.target.value)}
-              placeholder="Add feed URL…"
+              placeholder="Add blog or feed URL…"
+              disabled={addStatus?.type === 'loading'}
             />
-            <button type="submit">＋</button>
+            <button type="submit" disabled={addStatus?.type === 'loading'}>
+              ＋
+            </button>
           </form>
+          {addStatus && (
+            <div className={`add-status ${addStatus.type}`}>{addStatus.msg}</div>
+          )}
         </div>
       </aside>
 

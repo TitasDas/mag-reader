@@ -171,6 +171,20 @@ body {
   padding: 0 10px;
   cursor: pointer;
 }
+.add-status {
+  font-size: 11.5px;
+  margin: 6px 4px 0;
+  line-height: 1.4;
+}
+.add-status.loading {
+  color: var(--muted);
+}
+.add-status.error {
+  color: #d0603a;
+}
+.add-status.ok {
+  color: #3a9d5d;
+}
 .link {
   background: none;
   border: none;

@@ -67,10 +67,34 @@ export function parseFeed(xmlString, source, feedUrl) {
   })
 }
 
+// Parse a JSON Feed (jsonfeed.org) body into the same normalized shape.
+export function parseJsonFeed(jsonString, source, feedUrl) {
+  const data = JSON.parse(jsonString)
+  const items = Array.isArray(data.items) ? data.items : []
+  return items.map((it) => {
+    const content = it.content_html || it.content_text || it.summary || ''
+    const link = it.url || it.external_url || it.id || ''
+    return {
+      id: link || `${source}:${it.title}`,
+      title: it.title || '(untitled)',
+      link,
+      source,
+      feedUrl,
+      time: toTime(it.date_published || it.date_modified),
+      content,
+      preview: toPreview(content),
+    }
+  })
+}
+
 // Fetch + parse one feed. Extension pages with host_permissions bypass CORS.
 export async function fetchFeed(feed) {
   const res = await fetch(feed.url, { redirect: 'follow' })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const ct = (res.headers.get('content-type') || '').toLowerCase()
   const body = await res.text()
+  if (ct.includes('json') || body.trim().startsWith('{')) {
+    return parseJsonFeed(body, feed.title, feed.url)
+  }
   return parseFeed(body, feed.title, feed.url)
 }

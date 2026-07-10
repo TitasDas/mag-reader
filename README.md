@@ -18,7 +18,25 @@ Tauri Linux desktop app with minimal changes.
 - **Archived snapshot** — one click to open the article on archive.today
 - **Images / Text-only toggle** — read with the magazine's pictures, or strip
   them for a distraction-free text view (your choice is remembered)
+- **Add any blog by URL** — paste a site or post URL (e.g.
+  `lesswrong.com/about`) and it auto-discovers the RSS/Atom/JSON feed and
+  subscribes. No need to hunt for the feed link yourself.
+- **Auto-refresh** — a background worker checks your feeds every 30 minutes and
+  shows a count of new posts as a badge on the toolbar icon
 - Add / remove feeds; everything stored locally (no accounts, no server)
+
+## Adding blogs
+
+Paste any of these into the **Add blog or feed URL** box in the sidebar:
+
+- a site homepage — `lesswrong.com`
+- any page on the site — `https://www.lesswrong.com/about`
+- the feed itself — `https://www.lesswrong.com/feed.xml`
+
+It checks whether the URL is already a feed, then reads the page's feed
+autodiscovery tag, then probes common feed paths (`/feed`, `/rss.xml`,
+`/index.xml`, …). RSS, Atom, and JSON Feed are all supported. Once subscribed,
+new posts are pulled in automatically on refresh.
 - Search across titles and previews
 - Light and dark themes (follows your OS)
 
