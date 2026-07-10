@@ -17,6 +17,35 @@ Light and dark themes (Readstand follows your OS):
 
 ![Readstand, dark theme](screenshots/reader-dark.png)
 
+## Install
+
+Readstand runs in any Chromium browser (Chrome, Edge, Brave, Vivaldi).
+
+### Option A: from a release (no build tools needed)
+
+1. Download the latest `readstand-<version>.zip` from the
+   [Releases page](https://github.com/TitasDas/mag-reader/releases).
+2. Unzip it into a folder you intend to keep. Chrome loads the extension from
+   that folder, so do not delete it afterwards.
+3. Open `chrome://extensions`.
+4. Turn on **Developer mode** (top right).
+5. Click **Load unpacked** and select the unzipped folder.
+6. Click the Readstand icon in the toolbar to open it.
+
+### Option B: build from source
+
+```bash
+git clone https://github.com/TitasDas/mag-reader
+cd mag-reader
+npm install
+npm run build     # outputs the extension to dist/
+```
+
+Then load the `dist/` folder with **Load unpacked** (steps 3 to 6 above).
+
+Note: extensions load per browser profile, so repeat the load step in each
+profile where you want Readstand.
+
 ## Features
 
 - Unified timeline across all your feeds, newest first
@@ -48,17 +77,6 @@ npm run dev      # runs in a normal browser tab (uses localStorage)
 In dev mode, cross-origin feeds that lack permissive CORS headers may fail to
 load. That is expected. Inside the packaged extension they load fine because the
 extension is granted host permissions.
-
-## Build and load into Chrome
-
-```bash
-npm run build    # outputs the extension to dist/
-```
-
-1. Open `chrome://extensions`
-2. Enable **Developer mode** (top right)
-3. Click **Load unpacked** and select the `dist/` folder
-4. Click the toolbar icon to open Readstand
 
 ## Reading full articles
 
