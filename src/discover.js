@@ -61,8 +61,10 @@ function feedTitle(body) {
   return ''
 }
 
-// Returns { url, title } for the discovered feed, or throws.
-export async function discoverFeed(input) {
+// Returns an array of { url, title } candidate feeds (best-ranked first), or
+// throws if none are found. A site may expose several (posts, comments, tags),
+// so the caller can let the user pick when there's more than one.
+export async function discoverFeeds(input) {
   const startUrl = normalizeUrl(input)
 
   let res, body, finalUrl
@@ -77,12 +79,14 @@ export async function discoverFeed(input) {
 
   // 1) The URL already points straight at a feed.
   if (looksLikeXmlFeed(body, ct) || looksLikeJsonFeed(body, ct)) {
-    return { url: finalUrl, title: feedTitle(body) || hostTitle(finalUrl) }
+    return [{ url: finalUrl, title: feedTitle(body) || hostTitle(finalUrl) }]
   }
 
-  // 2) Autodiscovery link tags in the page <head>.
+  // 2) Autodiscovery link tags in the page <head>, collect all of them.
   const doc = new DOMParser().parseFromString(body, 'text/html')
-  const candidates = [...doc.querySelectorAll('link[rel~="alternate"], link[rel="feed"]')]
+  const rank = (t) => (t.includes('rss') ? 0 : t.includes('atom') ? 1 : 2)
+  const byUrl = new Map()
+  ;[...doc.querySelectorAll('link[rel~="alternate"], link[rel="feed"]')]
     .map((l) => ({
       type: (l.getAttribute('type') || '').toLowerCase(),
       href: l.getAttribute('href'),
@@ -96,18 +100,22 @@ export async function discoverFeed(input) {
           l.type === 'application/feed+json' ||
           /\/(feed|rss|atom)/i.test(l.href))
     )
-  const rank = (t) => (t.includes('rss') ? 0 : t.includes('atom') ? 1 : 2)
-  candidates.sort((a, b) => rank(a.type) - rank(b.type))
-  if (candidates.length) {
-    const abs = new URL(candidates[0].href, finalUrl).href
-    return {
-      url: abs,
-      title: candidates[0].title || (doc.title || '').trim() || hostTitle(finalUrl),
-    }
-  }
+    .sort((a, b) => rank(a.type) - rank(b.type))
+    .forEach((l) => {
+      const abs = new URL(l.href, finalUrl).href
+      if (!byUrl.has(abs)) {
+        byUrl.set(abs, {
+          url: abs,
+          title: l.title || (doc.title || '').trim() || hostTitle(finalUrl),
+        })
+      }
+    })
+  if (byUrl.size) return [...byUrl.values()]
 
   // 3) Probe conventional feed paths on the site origin.
   const origin = new URL(finalUrl).origin
+  const hits = []
+  const seen = new Set()
   for (const path of FALLBACK_PATHS) {
     const probe = origin + path
     try {
@@ -116,12 +124,17 @@ export async function discoverFeed(input) {
       const t = await r.text()
       const tct = r.headers.get('content-type') || ''
       if (looksLikeXmlFeed(t, tct) || looksLikeJsonFeed(t, tct)) {
-        return { url: r.url || probe, title: feedTitle(t) || hostTitle(finalUrl) }
+        const url = r.url || probe
+        if (!seen.has(url)) {
+          seen.add(url)
+          hits.push({ url, title: feedTitle(t) || hostTitle(finalUrl) })
+        }
       }
     } catch {
       /* try next path */
     }
   }
+  if (hits.length) return hits
 
   throw new Error('no feed found for this site')
 }

@@ -25,7 +25,7 @@ export function toPreview(html, max = 220) {
   const div = document.createElement('div')
   div.innerHTML = html || ''
   const plain = (div.textContent || '').replace(/\s+/g, ' ').trim()
-  return plain.length > max ? plain.slice(0, max) + '…' : plain
+  return plain.length > max ? plain.slice(0, max) + '...' : plain
 }
 
 // Parse a fetched feed body. `source` is the display name; `feedUrl` dedupes.

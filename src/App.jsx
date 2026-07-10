@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { DEFAULT_FEEDS } from './feeds.js'
 import { fetchFeed } from './rss.js'
 import { fetchReadable, archiveUrl } from './readerMode.js'
-import { discoverFeed } from './discover.js'
+import { discoverFeeds } from './discover.js'
+import { toOpml, parseOpml } from './opml.js'
 import * as store from './storage.js'
 
 const FILTERS = [
@@ -41,8 +42,10 @@ export default function App() {
   const [readIds, setReadIds] = useState({})
   const [savedIds, setSavedIds] = useState({})
   const [newFeedUrl, setNewFeedUrl] = useState('')
-  const [addStatus, setAddStatus] = useState(null) // {type:'loading'|'error', msg}
+  const [addStatus, setAddStatus] = useState(null) // {type:'loading'|'error'|'ok', msg}
+  const [feedChoices, setFeedChoices] = useState(null) // [{url,title}] when >1 found
   const [showManage, setShowManage] = useState(false)
+  const fileRef = useRef(null)
   const [enhanced, setEnhanced] = useState({}) // id -> {status, html, error}
   const [showImages, setShowImages] = useState(true)
 
@@ -169,25 +172,77 @@ export default function App() {
     visible.forEach((a) => (next[a.id] = Date.now()))
     persistRead(next)
   }
+  async function subscribe(candidate) {
+    if (feeds.some((f) => f.url === candidate.url)) {
+      setFeedChoices(null)
+      setAddStatus({ type: 'error', msg: `Already subscribed to ${candidate.title}` })
+      return
+    }
+    const next = [...feeds, { url: candidate.url, title: candidate.title, fullText: false }]
+    persistFeeds(next)
+    setNewFeedUrl('')
+    setFeedChoices(null)
+    setAddStatus({ type: 'ok', msg: `Subscribed to ${candidate.title}` })
+    setSourceFilter(candidate.url)
+    await loadArticles(next)
+  }
+
   async function addFeed(e) {
     e.preventDefault()
     const input = newFeedUrl.trim()
     if (!input) return
-    setAddStatus({ type: 'loading', msg: 'Finding feed…' })
+    setFeedChoices(null)
+    setAddStatus({ type: 'loading', msg: 'Finding feed...' })
     try {
-      const { url, title } = await discoverFeed(input)
-      if (feeds.some((f) => f.url === url)) {
-        setAddStatus({ type: 'error', msg: `Already subscribed to ${title}` })
-        return
+      const candidates = await discoverFeeds(input)
+      const fresh = candidates.filter((c) => !feeds.some((f) => f.url === c.url))
+      if (!fresh.length) {
+        setAddStatus({ type: 'error', msg: 'Already subscribed to that feed' })
+      } else if (fresh.length === 1) {
+        await subscribe(fresh[0])
+      } else {
+        setAddStatus(null)
+        setFeedChoices(fresh)
       }
-      const next = [...feeds, { url, title, fullText: false }]
-      persistFeeds(next)
-      setNewFeedUrl('')
-      setAddStatus({ type: 'ok', msg: `Subscribed to ${title}` })
-      setSourceFilter(url)
-      await loadArticles(next)
     } catch (err) {
       setAddStatus({ type: 'error', msg: err?.message || 'could not add feed' })
+    }
+  }
+
+  function exportOpml() {
+    const blob = new Blob([toOpml(feeds)], { type: 'text/xml' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'readstand-subscriptions.opml'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  async function importOpml(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const imported = parseOpml(await file.text())
+      const existing = new Set(feeds.map((f) => f.url))
+      const fresh = imported.filter((f) => !existing.has(f.url))
+      if (!fresh.length) {
+        setAddStatus({ type: 'error', msg: 'No new feeds in that file' })
+      } else {
+        const next = [...feeds, ...fresh]
+        persistFeeds(next)
+        setAddStatus({
+          type: 'ok',
+          msg: `Imported ${fresh.length} feed${fresh.length > 1 ? 's' : ''}`,
+        })
+        await loadArticles(next)
+      }
+    } catch (err) {
+      setAddStatus({ type: 'error', msg: err?.message || 'could not read OPML' })
+    } finally {
+      e.target.value = '' // let the same file be re-imported
     }
   }
   function removeFeed(url) {
@@ -201,12 +256,10 @@ export default function App() {
   return (
     <div className="app">
       <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-mark">◆</span> Reader
-        </div>
+        <div className="brand">Readstand</div>
 
         <button className="refresh" onClick={() => loadArticles(feeds)} disabled={loading}>
-          {loading ? 'Refreshing…' : '↻ Refresh'}
+          {loading ? 'Refreshing...' : '↻ Refresh'}
         </button>
 
         <div className="filters">
@@ -257,7 +310,7 @@ export default function App() {
             <input
               value={newFeedUrl}
               onChange={(e) => setNewFeedUrl(e.target.value)}
-              placeholder="Add blog or feed URL…"
+              placeholder="Add blog or feed URL..."
               disabled={addStatus?.type === 'loading'}
             />
             <button type="submit" disabled={addStatus?.type === 'loading'}>
@@ -267,6 +320,42 @@ export default function App() {
           {addStatus && (
             <div className={`add-status ${addStatus.type}`}>{addStatus.msg}</div>
           )}
+          {feedChoices && (
+            <div className="feed-choices">
+              <div className="feed-choices-head">Multiple feeds found, pick one:</div>
+              {feedChoices.map((c) => (
+                <button
+                  key={c.url}
+                  className="feed-choice"
+                  onClick={() => subscribe(c)}
+                  title={c.url}
+                >
+                  <span className="fc-title">{c.title}</span>
+                  <span className="fc-url">{c.url}</span>
+                </button>
+              ))}
+              <button className="link" onClick={() => setFeedChoices(null)}>
+                cancel
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="sidebar-footer">
+          <button className="link" onClick={exportOpml} disabled={!feeds.length}>
+            Export OPML
+          </button>
+          <span className="dot">·</span>
+          <button className="link" onClick={() => fileRef.current?.click()}>
+            Import OPML
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".opml,.xml,text/xml,text/x-opml"
+            style={{ display: 'none' }}
+            onChange={importOpml}
+          />
         </div>
       </aside>
 
@@ -276,7 +365,7 @@ export default function App() {
             className="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search articles…"
+            placeholder="Search articles..."
           />
           <button className="link" onClick={markAllRead} disabled={!visible.length}>
             mark all read
@@ -284,7 +373,7 @@ export default function App() {
         </div>
 
         {loading && !articles.length ? (
-          <div className="empty">Loading your magazines…</div>
+          <div className="empty">Loading your magazines...</div>
         ) : !visible.length ? (
           <div className="empty">Nothing here. Try a different filter or add a feed.</div>
         ) : (
@@ -342,7 +431,7 @@ export default function App() {
                 disabled={enhanced[selected.id]?.status === 'loading'}
               >
                 {enhanced[selected.id]?.status === 'loading'
-                  ? 'Fetching…'
+                  ? 'Fetching...'
                   : enhanced[selected.id]?.status === 'done'
                   ? '✓ Reader mode'
                   : 'Reader mode'}
@@ -369,7 +458,7 @@ export default function App() {
             {enhanced[selected.id]?.status === 'error' && (
               <div className="reader-note">
                 Reader mode couldn't extract this article ({enhanced[selected.id].error}).
-                The page likely doesn't ship its text — try the archived snapshot or open the original.
+                The page likely doesn't ship its text. Try the archived snapshot or open the original.
               </div>
             )}
             <div
@@ -378,7 +467,7 @@ export default function App() {
                 __html:
                   (enhanced[selected.id]?.status === 'done' && enhanced[selected.id].html) ||
                   selected.content ||
-                  '<p>(No text in this feed — try Reader mode or open the original.)</p>',
+                  '<p>(No text in this feed. Try Reader mode or open the original.)</p>',
               }}
             />
           </article>

@@ -3,7 +3,7 @@ import { Readability } from '@mozilla/readability'
 // Fetch an article's own public HTML and extract the readable content, the
 // same approach as Firefox/Safari Reader View. This reveals text that a page
 // ships in its HTML (including many "soft" overlay paywalls). It cannot conjure
-// text a server never sends — hard paywalls simply yield nothing extractable.
+// text a server never sends. Hard paywalls simply yield nothing extractable.
 export async function fetchReadable(url) {
   if (!url) throw new Error('No article link')
   const res = await fetch(url, { redirect: 'follow' })

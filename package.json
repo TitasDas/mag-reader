@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "A clean unified feed of the magazines you follow — a minimal RSS/Atom aggregator packaged as a Chrome extension.",
+  "description": "Readstand: a clean, unified feed of the magazines and blogs you follow. A minimal RSS/Atom aggregator packaged as a Chrome extension.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

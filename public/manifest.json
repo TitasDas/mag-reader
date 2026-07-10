@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Reader — Magazine Aggregator",
+  "name": "Readstand",
   "version": "0.1.0",
-  "description": "A clean unified feed of the magazines you follow.",
+  "description": "A clean, unified feed of the magazines and blogs you follow.",
   "action": {
     "default_title": "Open Reader"
   },
