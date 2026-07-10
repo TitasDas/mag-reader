@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { DEFAULT_FEEDS } from './feeds.js'
 import { fetchFeed } from './rss.js'
+import { fetchReadable, archiveUrl } from './readerMode.js'
 import * as store from './storage.js'
 
 const FILTERS = [
@@ -40,6 +41,8 @@ export default function App() {
   const [savedIds, setSavedIds] = useState({})
   const [newFeedUrl, setNewFeedUrl] = useState('')
   const [showManage, setShowManage] = useState(false)
+  const [enhanced, setEnhanced] = useState({}) // id -> {status, html, error}
+  const [showImages, setShowImages] = useState(true)
 
   // ---- persistence helpers -------------------------------------------------
   const persistRead = useCallback((next) => {
@@ -53,6 +56,13 @@ export default function App() {
   const persistFeeds = useCallback((next) => {
     setFeeds(next)
     store.set('feeds', next)
+  }, [])
+  const toggleImages = useCallback(() => {
+    setShowImages((v) => {
+      const next = !v
+      store.set('showImages', next)
+      return next
+    })
   }, [])
 
   // ---- data loading --------------------------------------------------------
@@ -81,15 +91,17 @@ export default function App() {
 
   useEffect(() => {
     ;(async () => {
-      const [savedFeeds, read, saved] = await Promise.all([
+      const [savedFeeds, read, saved, imgs] = await Promise.all([
         store.get('feeds', null),
         store.get('readIds', {}),
         store.get('savedIds', {}),
+        store.get('showImages', true),
       ])
       const feedList = savedFeeds && savedFeeds.length ? savedFeeds : DEFAULT_FEEDS
       setFeeds(feedList)
       setReadIds(read || {})
       setSavedIds(saved || {})
+      setShowImages(imgs !== false)
       await loadArticles(feedList)
     })()
   }, [loadArticles])
@@ -126,6 +138,18 @@ export default function App() {
     if (next[a.id]) delete next[a.id]
     else next[a.id] = Date.now()
     persistSaved(next)
+  }
+  async function runReaderMode(a) {
+    setEnhanced((e) => ({ ...e, [a.id]: { status: 'loading' } }))
+    try {
+      const art = await fetchReadable(a.link)
+      setEnhanced((e) => ({ ...e, [a.id]: { status: 'done', html: art.content } }))
+    } catch (err) {
+      setEnhanced((e) => ({
+        ...e,
+        [a.id]: { status: 'error', error: err?.message || 'failed' },
+      }))
+    }
   }
   function markAllRead() {
     const next = { ...readIds }
@@ -292,13 +316,50 @@ export default function App() {
               <a href={selected.link} target="_blank" rel="noreferrer" className="btn">
                 Open original ↗
               </a>
+              <button
+                className="btn ghost"
+                onClick={() => runReaderMode(selected)}
+                disabled={enhanced[selected.id]?.status === 'loading'}
+              >
+                {enhanced[selected.id]?.status === 'loading'
+                  ? 'Fetching…'
+                  : enhanced[selected.id]?.status === 'done'
+                  ? '✓ Reader mode'
+                  : 'Reader mode'}
+              </button>
+              <a
+                href={archiveUrl(selected.link)}
+                target="_blank"
+                rel="noreferrer"
+                className="btn ghost"
+              >
+                Archived snapshot ↗
+              </a>
+              <button
+                className="btn ghost"
+                onClick={toggleImages}
+                title="Toggle images on or off"
+              >
+                {showImages ? '🖼 Images on' : '𝐓 Text only'}
+              </button>
               <button className="btn ghost" onClick={() => toggleSaved(selected)}>
                 {savedIds[selected.id] ? '★ Saved' : '☆ Save'}
               </button>
             </div>
+            {enhanced[selected.id]?.status === 'error' && (
+              <div className="reader-note">
+                Reader mode couldn't extract this article ({enhanced[selected.id].error}).
+                The page likely doesn't ship its text — try the archived snapshot or open the original.
+              </div>
+            )}
             <div
-              className="reader-body"
-              dangerouslySetInnerHTML={{ __html: selected.content || '<p>(No preview text in this feed — open the original.)</p>' }}
+              className={`reader-body ${showImages ? '' : 'text-only'}`}
+              dangerouslySetInnerHTML={{
+                __html:
+                  (enhanced[selected.id]?.status === 'done' && enhanced[selected.id].html) ||
+                  selected.content ||
+                  '<p>(No text in this feed — try Reader mode or open the original.)</p>',
+              }}
             />
           </article>
         )}

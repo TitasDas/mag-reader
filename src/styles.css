@@ -312,15 +312,43 @@ body {
   color: var(--text);
   border: 1px solid var(--border);
 }
+.reader-note {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
 .reader-body {
   font-size: 17px;
   line-height: 1.7;
   font-family: Georgia, 'Times New Roman', serif;
 }
-.reader-body img {
+.reader-body img,
+.reader-body figure img {
   max-width: 100%;
   height: auto;
   border-radius: 6px;
+}
+.reader-body figure {
+  margin: 1.4em 0;
+}
+.reader-body figcaption {
+  font-size: 13px;
+  color: var(--muted);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  margin-top: 6px;
+}
+/* Text-only mode: hide all embedded media but keep the prose. */
+.reader-body.text-only img,
+.reader-body.text-only figure,
+.reader-body.text-only picture,
+.reader-body.text-only video,
+.reader-body.text-only iframe {
+  display: none;
 }
 .reader-body a {
   color: var(--accent);
