@@ -20,6 +20,7 @@ const BASE = `http://localhost:${PORT}/`
 
 const BODY_TOKEN = 'EXTRACTED_BODY_TOKEN_9f2a'
 const LAZY_IMG = 'https://example.com/real-lazy-image.jpg'
+const SHOTS = process.env.SHOTS_DIR // if set, save layout screenshots here
 
 function articleHtml() {
   const para = `<p>${'This is a substantial paragraph of article prose. '.repeat(8)}</p>`
@@ -178,6 +179,36 @@ try {
   } catch {
     console.log('  ! (skipped) new-tab check did not run in this environment')
   }
+
+  console.log('\nPhone layout (drill-down navigation)')
+  const mp = await context.newPage()
+  await mp.setViewportSize({ width: 390, height: 844 })
+  await mp.goto(BASE, { waitUntil: 'domcontentloaded' })
+  await mp.locator('.item').first().waitFor({ timeout: 15000 })
+  check('starts on the list (reader hidden)', !(await mp.locator('.reader-title').isVisible().catch(() => false)))
+  if (SHOTS) await mp.screenshot({ path: `${SHOTS}/phone-list.png` })
+
+  await mp.locator('.item').first().click()
+  await mp.locator('.reader-title').waitFor({ timeout: 5000 })
+  check('tapping an article shows the reader', await mp.locator('.reader-title').isVisible())
+  check('list is hidden while reading', !(await mp.locator('.item').first().isVisible().catch(() => false)))
+  if (SHOTS) await mp.screenshot({ path: `${SHOTS}/phone-reader.png` })
+
+  await mp.getByRole('button', { name: 'Back to list' }).click()
+  check('Back returns to the list', await mp.locator('.item').first().isVisible())
+
+  await mp.getByRole('button', { name: 'Open sources' }).click()
+  await mp.waitForTimeout(300)
+  check('hamburger opens the sources drawer', (await mp.locator('.sidebar.open').count()) === 1)
+  check(
+    'drawer slid fully into view',
+    await mp.locator('.sidebar').evaluate((el) => el.getBoundingClientRect().left >= -1)
+  )
+  if (SHOTS) await mp.screenshot({ path: `${SHOTS}/phone-drawer.png` })
+
+  await mp.locator('.sidebar .source').first().click()
+  await mp.waitForTimeout(300)
+  check('picking a source closes the drawer', (await mp.locator('.sidebar.open').count()) === 0)
 } finally {
   if (context) await context.close()
   server.kill()

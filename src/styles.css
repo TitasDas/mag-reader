@@ -42,7 +42,39 @@ body {
   display: grid;
   grid-template-columns: var(--sidebar-w) var(--list-w) 1fr;
   height: 100vh;
+  height: 100dvh; /* account for mobile browser chrome */
   overflow: hidden;
+}
+.sidebar,
+.list,
+.reader {
+  overscroll-behavior: contain;
+}
+
+/* Icon buttons + mobile nav affordances (hidden on desktop, shown by the
+   responsive media queries at the end of this file). */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.icon-btn:hover {
+  border-color: var(--accent);
+}
+.nav-toggle,
+.drawer-close,
+.reader-topbar,
+.drawer-backdrop {
+  display: none;
 }
 
 /* ---- sidebar ---- */
@@ -472,12 +504,109 @@ body {
   margin-top: 20vh;
 }
 
-/* Narrow windows (e.g. small extension popups): collapse the reader pane. */
-@media (max-width: 900px) {
+.reader-topbar {
+  align-items: center;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 12px;
+}
+
+/* ===== Responsive ========================================================= */
+
+/* Tablet and below: sidebar becomes a slide-in drawer; list + reader remain. */
+@media (max-width: 1023px) {
   .app {
-    grid-template-columns: 200px 1fr;
+    grid-template-columns: var(--list-w) 1fr;
+  }
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 288px;
+    max-width: 85vw;
+    z-index: 40;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    box-shadow: 2px 0 18px rgba(0, 0, 0, 0.18);
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .sidebar.open {
+    transform: none;
+  }
+  .drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgba(0, 0, 0, 0.42);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+  }
+  .drawer-backdrop.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .nav-toggle,
+  .drawer-close {
+    display: inline-flex;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+/* Phone: single pane with drill-down (list <-> reader), driven by data-pane. */
+@media (max-width: 639px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+  .list,
+  .reader {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .app[data-pane='list'] .reader {
+    display: none;
+  }
+  .app[data-pane='reader'] .list {
+    display: none;
+  }
+  .reader-topbar {
+    display: flex;
+    margin: 0 -16px 12px;
+    padding-top: max(8px, env(safe-area-inset-top));
   }
   .reader {
-    display: none;
+    padding: 0 16px calc(24px + env(safe-area-inset-bottom));
+  }
+  .reader article {
+    margin-top: 4px;
+  }
+  .reader-title {
+    font-size: 24px;
+  }
+  .reader-body {
+    font-size: 18px;
+  }
+  .list-head {
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+  .source {
+    min-height: 44px;
+  }
+  .chip {
+    padding: 8px 14px;
+  }
+  .item {
+    padding: 16px 44px 16px 16px;
   }
 }

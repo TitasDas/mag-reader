@@ -49,6 +49,8 @@ export default function App() {
   const [enhanced, setEnhanced] = useState({}) // id -> {status, html, error}
   const [readerView, setReaderView] = useState({}) // id -> bool (show extracted)
   const [showImages, setShowImages] = useState(true)
+  const [mobilePane, setMobilePane] = useState('list') // 'list' | 'reader' (phone)
+  const [drawerOpen, setDrawerOpen] = useState(false) // sources drawer (tablet/phone)
 
   // ---- persistence helpers -------------------------------------------------
   const persistRead = useCallback((next) => {
@@ -148,7 +150,12 @@ export default function App() {
   // ---- actions -------------------------------------------------------------
   function openArticle(a) {
     setSelectedId(a.id)
+    setMobilePane('reader') // on phones, drill into the reading view
     if (!readIds[a.id]) persistRead({ ...readIds, [a.id]: Date.now() })
+  }
+  function chooseSource(url) {
+    setSourceFilter(url)
+    setDrawerOpen(false) // close the sources drawer after picking (tablet/phone)
   }
   function toggleSaved(a) {
     const next = { ...savedIds }
@@ -272,9 +279,22 @@ export default function App() {
 
   // ---- render --------------------------------------------------------------
   return (
-    <div className="app">
-      <aside className="sidebar">
-        <div className="brand">Readstand</div>
+    <div className="app" data-pane={mobilePane}>
+      <div
+        className={`drawer-backdrop ${drawerOpen ? 'show' : ''}`}
+        onClick={() => setDrawerOpen(false)}
+      />
+      <aside className={`sidebar ${drawerOpen ? 'open' : ''}`}>
+        <div className="brand">
+          Readstand
+          <button
+            className="icon-btn drawer-close"
+            onClick={() => setDrawerOpen(false)}
+            aria-label="Close sources"
+          >
+            ✕
+          </button>
+        </div>
 
         <button className="refresh" onClick={() => loadArticles(feeds)} disabled={loading}>
           {loading ? 'Refreshing...' : '↻ Refresh'}
@@ -302,7 +322,7 @@ export default function App() {
           </div>
           <button
             className={`source ${!sourceFilter ? 'active' : ''}`}
-            onClick={() => setSourceFilter(null)}
+            onClick={() => chooseSource(null)}
           >
             All sources
           </button>
@@ -310,7 +330,7 @@ export default function App() {
             <div key={f.url} className="source-row">
               <button
                 className={`source ${sourceFilter === f.url ? 'active' : ''}`}
-                onClick={() => setSourceFilter(f.url)}
+                onClick={() => chooseSource(f.url)}
                 title={f.url}
               >
                 {f.title}
@@ -379,6 +399,13 @@ export default function App() {
 
       <section className="list">
         <div className="list-head">
+          <button
+            className="icon-btn nav-toggle"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open sources"
+          >
+            ☰
+          </button>
           <input
             className="search"
             value={query}
@@ -427,6 +454,15 @@ export default function App() {
       </section>
 
       <main className="reader">
+        <div className="reader-topbar">
+          <button
+            className="icon-btn"
+            onClick={() => setMobilePane('list')}
+            aria-label="Back to list"
+          >
+            ‹ Back
+          </button>
+        </div>
         {!selected ? (
           <div className="empty reader-empty">
             Select an article to read.
