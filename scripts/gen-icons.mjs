@@ -10,6 +10,7 @@
 import { chromium } from 'playwright'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
+import { existsSync } from 'node:fs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(__dirname, '..', 'public', 'icons')
@@ -49,21 +50,41 @@ const TARGETS = [
   { file: 'icon-maskable-512.png', size: 512, maskable: true },
 ]
 
+// Tauri desktop icon set (only written if the Tauri project exists).
+const TAURI_OUT = resolve(__dirname, '..', 'src-tauri', 'icons')
+const TAURI_TARGETS = [
+  { file: '32x32.png', size: 32 },
+  { file: '128x128.png', size: 128 },
+  { file: '128x128@2x.png', size: 256 },
+  { file: 'icon.png', size: 512 },
+]
+
+async function renderTo(page, markup, size, path) {
+  await page.setViewportSize({ width: size, height: size })
+  await page.setContent(
+    `<!doctype html><html><head><style>
+       html,body{margin:0;padding:0}
+       svg{display:block;width:${size}px;height:${size}px}
+     </style></head><body>${markup}</body></html>`,
+    { waitUntil: 'load' }
+  )
+  await page.screenshot({ path, omitBackground: true })
+}
+
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--no-sandbox'] })
 const page = await browser.newPage()
 
 for (const t of TARGETS) {
-  const markup = svg({ maskable: t.maskable })
-  await page.setViewportSize({ width: t.size, height: t.size })
-  await page.setContent(
-    `<!doctype html><html><head><style>
-       html,body{margin:0;padding:0}
-       svg{display:block;width:${t.size}px;height:${t.size}px}
-     </style></head><body>${markup}</body></html>`,
-    { waitUntil: 'load' }
-  )
-  await page.screenshot({ path: resolve(OUT, t.file), omitBackground: true })
+  await renderTo(page, svg({ maskable: t.maskable }), t.size, resolve(OUT, t.file))
   console.log(`  wrote icons/${t.file} (${t.size}x${t.size})`)
+}
+
+if (existsSync(TAURI_OUT)) {
+  const markup = svg({ maskable: false })
+  for (const t of TAURI_TARGETS) {
+    await renderTo(page, markup, t.size, resolve(TAURI_OUT, t.file))
+    console.log(`  wrote src-tauri/icons/${t.file} (${t.size}x${t.size})`)
+  }
 }
 
 await browser.close()

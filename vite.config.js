@@ -10,4 +10,9 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
   },
+  // Fixed dev port so the Tauri desktop shell (devUrl) always finds the server.
+  server: {
+    port: 5173,
+    strictPort: true,
+  },
 })

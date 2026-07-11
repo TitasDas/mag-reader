@@ -1,7 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
-import { isExtension } from './net.js'
+import { isExtension, isTauri } from './net.js'
 import './styles.css'
 
 createRoot(document.getElementById('root')).render(
@@ -15,6 +15,7 @@ createRoot(document.getElementById('root')).render(
 // chrome-extension:// origin, so skip it there.
 if (
   !isExtension &&
+  !isTauri &&
   'serviceWorker' in navigator &&
   (location.protocol === 'https:' || location.protocol === 'http:')
 ) {
