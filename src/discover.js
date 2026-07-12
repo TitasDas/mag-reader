@@ -98,6 +98,30 @@ function publisherFeedCandidates(url) {
     out.push('https://www.theverge.com/rss/index.xml')
   } else if (host.endsWith('medium.com') && segs[0]) {
     out.push(`https://medium.com/feed/${segs[0]}`)
+  } else if (host.endsWith('ft.com')) {
+    if (segs[0]) out.push(`https://www.ft.com/${segs[0]}?format=rss`)
+    out.push('https://www.ft.com/rss/home')
+  } else if (host.endsWith('wsj.com')) {
+    const WSJ = {
+      world: 'RSSWorldNews', business: 'WSJcomUSBusiness', markets: 'RSSMarketsMain',
+      tech: 'RSSWSJD', technology: 'RSSWSJD', opinion: 'RSSOpinion', lifestyle: 'RSSLifestyle',
+    }
+    const s = segs.find((x) => WSJ[x])
+    if (s) out.push(`https://feeds.a.dj.com/rss/${WSJ[s]}.xml`)
+    out.push('https://feeds.a.dj.com/rss/RSSWorldNews.xml')
+  } else if (host.endsWith('economist.com')) {
+    if (segs[0]) out.push(`https://www.economist.com/${segs[0]}/rss.xml`)
+    out.push('https://www.economist.com/latest/rss.xml')
+  } else if (host.endsWith('bloomberg.com')) {
+    const BB = {
+      markets: 'markets', technology: 'technology', tech: 'technology', politics: 'politics',
+      business: 'business', economics: 'economics', green: 'green',
+    }
+    const s = segs.find((x) => BB[x])
+    if (s) out.push(`https://feeds.bloomberg.com/${BB[s]}/news.rss`)
+    out.push('https://feeds.bloomberg.com/markets/news.rss')
+  } else if (host.endsWith('arstechnica.com')) {
+    out.push('https://feeds.arstechnica.com/arstechnica/index')
   }
   return out
 }

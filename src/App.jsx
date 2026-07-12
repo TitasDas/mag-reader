@@ -671,6 +671,22 @@ export default function App() {
     setDrawerOpen(false)
     dismissToast()
   }
+  // Report a site with no discoverable feed so a pattern can be added later.
+  // Opens a prefilled issue on the project repo.
+  function reportMissingFeed(url) {
+    let host = url
+    try {
+      host = new URL(url).hostname.replace(/^www\./, '')
+    } catch {
+      /* keep url */
+    }
+    const title = encodeURIComponent(`Feed pattern needed: ${host}`)
+    const body = encodeURIComponent(
+      `Readstand could not discover a feed for this site.\n\nURL: ${url}\nHost: ${host}\n\n` +
+        `If you know the feed URL or pattern, note it here.`
+    )
+    openExternal(`https://github.com/TitasDas/mag-reader/issues/new?title=${title}&body=${body}`)
+  }
 
   function exportOpml() {
     const blob = new Blob([toOpml(feeds)], { type: 'text/xml' })
@@ -832,6 +848,13 @@ export default function App() {
               </button>
               <button className="btn ghost" onClick={() => openExternal(noFeedUrl)}>
                 Open in browser
+              </button>
+              <button
+                className="link no-feed-report"
+                onClick={() => reportMissingFeed(noFeedUrl)}
+                title="Open a prefilled issue so a feed pattern can be added"
+              >
+                Report missing feed
               </button>
             </div>
           )}

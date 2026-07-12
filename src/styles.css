@@ -261,6 +261,11 @@ body {
   padding: 6px 10px;
   font-size: 12px;
 }
+.no-feed-report {
+  flex-basis: 100%;
+  text-align: left;
+  margin-top: 2px;
+}
 .sidebar-footer {
   margin-top: auto;
   padding-top: 10px;

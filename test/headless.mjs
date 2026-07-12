@@ -393,6 +393,10 @@ try {
   await page.locator('.add-feed button[type="submit"]').click()
   await page.locator('.no-feed').waitFor({ state: 'visible', timeout: 8000 })
   check('offers to read the article when no feed is found', await page.locator('.no-feed').isVisible())
+  check(
+    'offers to report the missing feed',
+    (await page.getByRole('button', { name: 'Report missing feed' }).count()) >= 1
+  )
   await page.getByRole('button', { name: 'Read this article' }).click()
   await page.waitForFunction(
     (t) => document.querySelector('.reader-body')?.textContent?.includes(t),
