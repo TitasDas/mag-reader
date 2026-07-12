@@ -120,7 +120,7 @@ VITE_FEED_PROXY="https://your-proxy.workers.dev/?url=" npm run build
 
 ## Why it exists
 
-A good magazine is an idea reactor: reading Gizmodo as a kid is what got me tinkering with gadgets (including, once, a robot that chops vegetables). But today's reading fights that, with algorithmic feeds, half-read tabs, and good ideas you forget by morning. Readstand is the tool I wanted: a quiet place to read on purpose, and to catch the sparks before they fade.
+A good magazine is an idea reactor: reading Gizmodo as a kid is what got me tinkering with gadgets (including, once, a robot that chops vegetables). Years later I could never quite explain to a CEO why reading a book in the middle of building trading algorithms was not a waste of work time; it was where half the good ideas came from. But today's reading fights that, with algorithmic feeds, ads, flashy whatnots, half-read tabs, and good ideas you forget by morning. Readstand is the tool I wanted: a quiet, ad-free place with no algorithm and nothing blinking at you, to read on purpose and catch the sparks before they fade.
 
 Built by Titas Das. [GitHub](https://github.com/TitasDas) and [LinkedIn](https://www.linkedin.com/in/titas-das/).
 
