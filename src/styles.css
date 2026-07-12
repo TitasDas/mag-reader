@@ -376,6 +376,13 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+.reader-back {
+  margin-bottom: 12px;
+}
+.reader-loading {
+  color: var(--muted);
+  font-style: italic;
+}
 .reader-title {
   font-size: 30px;
   line-height: 1.2;
@@ -418,6 +425,33 @@ body {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
+/* Text-size zoom control: a tight little segmented group. */
+.zoom {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  margin-left: auto;
+}
+.zoom-btn {
+  padding: 8px 10px;
+  border-radius: 0;
+  min-width: 38px;
+  text-align: center;
+}
+.zoom-btn:first-child {
+  border-radius: 8px 0 0 8px;
+}
+.zoom-btn:last-child {
+  border-radius: 0 8px 8px 0;
+}
+.zoom-btn + .zoom-btn {
+  border-left: none;
+}
+.zoom-level {
+  font-variant-numeric: tabular-nums;
+  min-width: 48px;
+  cursor: pointer;
+}
 .reader-note {
   background: var(--bg-alt);
   border: 1px solid var(--border);
@@ -429,7 +463,7 @@ body {
   margin-bottom: 20px;
 }
 .reader-body {
-  font-size: 17px;
+  font-size: calc(17px * var(--reader-scale, 1));
   line-height: 1.7;
   font-family: Georgia, 'Times New Roman', serif;
 }
@@ -595,7 +629,7 @@ body {
     font-size: 24px;
   }
   .reader-body {
-    font-size: 18px;
+    font-size: calc(18px * var(--reader-scale, 1));
   }
   .list-head {
     padding-top: max(12px, env(safe-area-inset-top));
@@ -608,5 +642,107 @@ body {
   }
   .item {
     padding: 16px 44px 16px 16px;
+  }
+}
+
+/* Centered status popup: floats over whatever screen the user is on. The overlay
+   itself is click-through; only the toast card captures pointer events. */
+.toast-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  padding: 16px;
+}
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(92vw, 420px);
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--bg-alt);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28);
+  font-size: 14px;
+  line-height: 1.35;
+  animation: toast-in 0.16s ease-out;
+}
+.toast.ok {
+  border-left-color: #2e9e5b;
+}
+.toast.error {
+  border-left-color: #d1453b;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.toast-text {
+  flex: 1;
+  min-width: 0;
+}
+.toast-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+.toast.ok .toast-icon {
+  background: #2e9e5b;
+}
+.toast.error .toast-icon {
+  background: #d1453b;
+}
+.toast-spinner {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: toast-spin 0.7s linear infinite;
+}
+@keyframes toast-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.toast-close {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+  line-height: 1;
+}
+.toast-close:hover {
+  color: var(--text);
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+  .toast-spinner {
+    animation-duration: 1.4s;
   }
 }

@@ -90,8 +90,47 @@ export async function fetchReadable(url) {
   }
 }
 
-// Public archive snapshot (archive.today). "newest" redirects to the most
-// recent capture of the page, or offers to create one if none exists.
+// Public archive snapshots to try, in order. The archive.today service answers
+// on several interchangeable mirror domains (archive.ph/.today/.is) that share
+// the same captures — handy when one domain is blocked or down. The Wayback
+// Machine is a separate archive, so it's the cross-service fallback. Each
+// "newest"/latest form redirects to the most recent capture of the page.
+const ARCHIVE_MIRRORS = [
+  (url) => 'https://archive.ph/newest/' + url,
+  (url) => 'https://archive.today/newest/' + url,
+  (url) => 'https://archive.is/newest/' + url,
+  (url) => 'https://web.archive.org/web/2/' + url,
+]
+
+// The primary snapshot URL (kept for callers/tests that want a single link).
 export function archiveUrl(url) {
-  return 'https://archive.ph/newest/' + url
+  return ARCHIVE_MIRRORS[0](url)
+}
+
+// Fetch a public archived snapshot and extract its readable content so it can be
+// shown inside the app rather than opening archive.today in a new tab. Reuses the
+// same fetch + Readability pipeline as reader mode; relative image/link URLs
+// resolve against the archive page. Falls back through the mirror list so a
+// blocked/down mirror or a missing capture on one service doesn't dead-end.
+export async function fetchArchived(url, onAttempt) {
+  if (!url) throw new Error('no article link')
+  const errors = []
+  for (const mirror of ARCHIVE_MIRRORS) {
+    const target = mirror(url)
+    if (onAttempt) {
+      let host = 'archive'
+      try {
+        host = new URL(target).hostname
+      } catch {
+        /* keep default */
+      }
+      onAttempt(host)
+    }
+    try {
+      return await fetchReadable(target)
+    } catch (err) {
+      errors.push(err?.message || 'failed')
+    }
+  }
+  throw new Error(`no snapshot on any mirror (${errors.join('; ')})`)
 }

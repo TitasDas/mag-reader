@@ -32,6 +32,7 @@ function articleHtml() {
       <img data-src="${LAZY_IMG}" alt="lazy" />
       <p>${para}</p>
       <a href="/relative/link">a relative link</a>
+      <a href="https://example.com/article/linked-page">a linked article</a>
     </article>
   </body></html>`
 }
@@ -93,14 +94,19 @@ try {
   // Requests to the local preview server (the app + its assets) are untouched.
   await context.route(/^https?:\/\/(?!localhost)/, async (route) => {
     const url = route.request().url()
-    if (url.includes('/article/')) {
-      return route.fulfill({ contentType: 'text/html', body: articleHtml() })
-    }
     let host = 'unknown'
     try {
       host = new URL(url).hostname
     } catch {
       /* keep default */
+    }
+    // Simulate the primary archive mirror being down so the fallback chain in
+    // fetchArchived (archive.ph -> archive.today -> ...) gets exercised.
+    if (host === 'archive.ph') {
+      return route.fulfill({ status: 503, contentType: 'text/plain', body: 'down' })
+    }
+    if (url.includes('/article/')) {
+      return route.fulfill({ contentType: 'text/html', body: articleHtml() })
     }
     return route.fulfill({ contentType: 'application/rss+xml', body: feedXml(host) })
   })
@@ -176,24 +182,95 @@ try {
     !(await page.locator('.reader-body').innerText()).includes(BODY_TOKEN)
   )
 
-  console.log('\nIn-article link opens a new tab')
+  console.log('\nIn-article link opens inside the app (not a new tab)')
   await readerBtn.click()
   await page.waitForFunction(
     (t) => document.querySelector('.reader-body')?.textContent?.includes(t),
     BODY_TOKEN,
     { timeout: 10000 }
   )
-  try {
-    const [popup] = await Promise.all([
-      context.waitForEvent('page', { timeout: 5000 }),
-      page.locator('.reader-body a[href^="http"]').first().click(),
-    ])
-    check('new tab opened for the link', !!popup)
-    check('reader page did not navigate away', page.url() === BASE)
-    await popup.close().catch(() => {})
-  } catch {
-    console.log('  ! (skipped) new-tab check did not run in this environment')
-  }
+  const tabsBeforeFollow = context.pages().length
+  await page.locator('.reader-body a[href="https://example.com/article/linked-page"]').click()
+  // The linked page is fetched, extracted, and shown in the same reader pane;
+  // its extracted headline replaces the feed article's title.
+  await page.waitForFunction(
+    () => document.querySelector('.reader-title')?.textContent === 'Extracted Heading',
+    null,
+    { timeout: 15000 }
+  )
+  check('linked article extracted into the reader pane', (await page.locator('.reader-title').innerText()) === 'Extracted Heading')
+  check('no new tab opened for the link', context.pages().length === tabsBeforeFollow)
+  check('reader did not navigate away', page.url() === BASE)
+  // A Back control appears and returns to the article we came from.
+  const backBtn = page.locator('.reader-back')
+  check('back control appears after following a link', await backBtn.isVisible())
+  await backBtn.click()
+  await page.waitForFunction(
+    () => document.querySelector('.reader-title')?.textContent?.startsWith('Headline from'),
+    null,
+    { timeout: 5000 }
+  )
+  check('back returns to the originating article', (await page.locator('.reader-title').innerText()).startsWith('Headline from'))
+
+  // Toggle reader mode back off so we start the next checks from the feed view.
+  if ((await readerBtn.getAttribute('aria-pressed')) === 'true') await readerBtn.click()
+
+  console.log('\nArchived snapshot opens inside the app (with mirror fallback)')
+  const archiveBtn = page.getByRole('button', { name: 'Archived snapshot' })
+  const tabsBefore = context.pages().length
+  await archiveBtn.click()
+  await page.waitForFunction(
+    (t) => document.querySelector('.reader-body')?.textContent?.includes(t),
+    BODY_TOKEN,
+    { timeout: 20000 }
+  )
+  // archive.ph is mocked as 503, so success here proves the fallback mirror served it.
+  check('archived content shown in-app via fallback mirror', (await page.locator('.reader-body').innerText()).includes(BODY_TOKEN))
+  check('archive button active', (await archiveBtn.getAttribute('aria-pressed')) === 'true')
+  check('no new tab was opened for the archive', context.pages().length === tabsBefore)
+  check('reader did not navigate away', page.url() === BASE)
+  await archiveBtn.click()
+  check(
+    'archive toggles back to the feed view',
+    !(await page.locator('.reader-body').innerText()).includes(BODY_TOKEN)
+  )
+
+  console.log('\nReader text zoom')
+  const fontSize = () =>
+    page.locator('.reader-body').evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+  const base = await fontSize()
+  await page.getByRole('button', { name: 'Increase text size' }).click()
+  const bigger = await fontSize()
+  check(`zoom in enlarges text (${base}px -> ${bigger}px)`, bigger > base)
+  check('level readout updates', (await page.getByRole('button', { name: 'Reset text size' }).innerText()) === '110%')
+  await page.getByRole('button', { name: 'Decrease text size' }).click()
+  await page.getByRole('button', { name: 'Decrease text size' }).click()
+  const smaller = await fontSize()
+  check(`zoom out shrinks text (${smaller}px < ${base}px)`, smaller < base)
+  await page.getByRole('button', { name: 'Reset text size' }).click()
+  check('reset returns to 100%', (await page.getByRole('button', { name: 'Reset text size' }).innerText()) === '100%')
+  check('reset restores base size', Math.abs((await fontSize()) - base) < 0.5)
+
+  console.log('\nCentered status popup')
+  // Refresh triggers a load, which raises a centered status popup.
+  await page.getByRole('button', { name: /Refresh/ }).click()
+  await page.locator('.toast').waitFor({ state: 'visible', timeout: 5000 })
+  check('popup appears on refresh', await page.locator('.toast').isVisible())
+  const centered = await page.locator('.toast').evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    const cx = r.left + r.width / 2
+    const cy = r.top + r.height / 2
+    return Math.abs(cx - innerWidth / 2) < 40 && Math.abs(cy - innerHeight / 2) < 40
+  })
+  check('popup is centered on the screen', centered)
+  // The overlay must not swallow clicks meant for the page beneath it.
+  const clickThrough = await page
+    .locator('.toast-overlay')
+    .evaluate((el) => getComputedStyle(el).pointerEvents === 'none')
+  check('overlay is click-through', clickThrough)
+  // Loading popup resolves to a dismissible confirmation.
+  await page.locator('.toast.ok, .toast.error').first().waitFor({ state: 'visible', timeout: 15000 })
+  check('popup reports completion', (await page.locator('.toast').innerText()).length > 0)
 
   console.log('\nPhone layout (drill-down navigation)')
   const mp = await context.newPage()
