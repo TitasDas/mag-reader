@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "license": "AGPL-3.0-only",
   "description": "Readstand: a clean, unified feed of the magazines and blogs you follow. A minimal RSS/Atom aggregator packaged as a Chrome extension.",
   "scripts": {
     "dev": "vite",

@@ -133,4 +133,8 @@ Built by Titas Das. [GitHub](https://github.com/TitasDas) and [LinkedIn](https:/
 - **Missing a publisher?** If a site has no discoverable feed, use **Report missing feed** in the app to open a prefilled issue, and a pattern can be added.
 - **Develop / test:** `npm run dev` for a live server, `npm run test:e2e` for the headless end-to-end suite, `npm run icons` and `npm run shots` to regenerate the icon set and screenshots.
 
+## License
+
+Readstand is free software under the [GNU AGPL-3.0](LICENSE). You may use, study, self-host, and fork it. If you distribute it or run a modified version as a network service, you must release your source under the same license. The name Readstand and its branding are not covered by this license and remain reserved.
+
 Happy reading.
