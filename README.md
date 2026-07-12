@@ -1,8 +1,12 @@
 # Readstand
 
-**Your magazines and blogs, in one calm place. No feed algorithm. No noise. Just the reading you chose.**
+**Read the magazines and blogs you follow on purpose, and keep what you learn.**
 
-Readstand pulls the RSS and Atom feeds of the publications you actually care about into a single, fast, distraction-free reader. It runs as a Chrome extension, an installable web app for your phone, and a native Linux desktop app, all from the same code. Everything is stored locally. No account, no tracking, no one deciding what you see.
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-b5451c.svg)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/TitasDas/mag-reader?color=b5451c)](https://github.com/TitasDas/mag-reader/releases)
+[![Discussions](https://img.shields.io/badge/feedback-Discussions-b5451c.svg)](https://github.com/TitasDas/mag-reader/discussions)
+
+A calm, private reader for the RSS and Atom feeds you choose. No algorithm deciding what you see, no ads, no tracking. Read in a clean pane, highlight the good bits, note what you learned, and export it all to Markdown. It runs as a Chrome extension, an installable web app for your phone and tablet, and a native Linux desktop app, all from the same code, all stored locally on your device.
 
 ![Read, highlight, note, and export, in a few seconds](screenshots/demo.gif)
 
