@@ -626,36 +626,50 @@ export default function App() {
   // in the reader as a one-off (not subscribed).
   async function readUrlOnce(url) {
     notify('Fetching article...', 'loading')
+    const len = (a) => (a && a.textContent ? a.textContent.trim().length : 0)
+    let art = null
     try {
-      const art = await fetchReadable(url)
-      let host = url
-      try {
-        host = new URL(url).hostname.replace(/^www\./, '')
-      } catch {
-        /* keep url */
-      }
-      const synth = {
-        id: url,
-        title: art.title || host,
-        link: url,
-        source: host,
-        time: Date.now(),
-        content: art.content,
-        preview: '',
-      }
-      setLinkedById((m) => ({ ...m, [url]: synth }))
-      openArticle(synth)
-      setNewFeedUrl('')
-      setAddStatus(null)
-      setNoFeedUrl(null)
-      setDrawerOpen(false)
-      dismissToast()
-    } catch (e) {
-      notify(
-        `Could not fetch that article (${e?.message || 'failed'}). Try Open in browser.`,
-        'error'
-      )
+      art = await fetchReadable(url)
+    } catch {
+      /* blocked or unreachable; try the archived snapshot next */
     }
+    // Paywalled or bot-blocked pages tend to return a short teaser (or nothing).
+    // Fall back to the archived snapshot, which is how we get past paywalls.
+    if (len(art) < 600) {
+      try {
+        notify('Trying archived snapshot...', 'loading')
+        const archived = await fetchArchived(url)
+        if (len(archived) > len(art)) art = archived
+      } catch {
+        /* keep whatever we managed to get */
+      }
+    }
+    if (!art) {
+      notify('Could not fetch that article. Try Open in browser.', 'error')
+      return
+    }
+    let host = url
+    try {
+      host = new URL(url).hostname.replace(/^www\./, '')
+    } catch {
+      /* keep url */
+    }
+    const synth = {
+      id: url,
+      title: art.title || host,
+      link: url,
+      source: host,
+      time: Date.now(),
+      content: art.content,
+      preview: '',
+    }
+    setLinkedById((m) => ({ ...m, [url]: synth }))
+    openArticle(synth)
+    setNewFeedUrl('')
+    setAddStatus(null)
+    setNoFeedUrl(null)
+    setDrawerOpen(false)
+    dismissToast()
   }
 
   function exportOpml() {

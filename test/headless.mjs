@@ -114,6 +114,17 @@ try {
       }
       return route.fulfill({ contentType: 'text/html', body: articleHtml() })
     }
+    // NYT-style publisher: the article page has no feed link and path probes
+    // 404, but the section feed lives on rss.nytimes.com (a different host).
+    if (host === 'rss.nytimes.com') {
+      return route.fulfill({ contentType: 'application/rss+xml', body: feedXml('nyt-section') })
+    }
+    if (host.endsWith('nytimes.com')) {
+      if (/\/feed|\/rss|\/atom|\.xml/.test(url)) {
+        return route.fulfill({ status: 404, contentType: 'text/plain', body: 'nope' })
+      }
+      return route.fulfill({ contentType: 'text/html', body: articleHtml() })
+    }
     if (url.includes('/article/')) {
       return route.fulfill({ contentType: 'text/html', body: articleHtml() })
     }
@@ -389,6 +400,24 @@ try {
     { timeout: 15000 }
   )
   check('the article opens in the reader', (await page.locator('.reader-body').innerText()).includes(BODY_TOKEN))
+
+  console.log('\nPublisher feed patterns (NYT-style)')
+  // Let any in-flight refresh from the previous section settle first.
+  await page.locator('.add-feed input:not([disabled])').waitFor({ timeout: 15000 })
+  await page.locator('.add-feed input').fill('https://www.nytimes.com/2026/07/05/business/philosophy-majors-ai-jobs.html')
+  await page.locator('.add-feed button[type="submit"]').click()
+  // Discovery should find the section feed on rss.nytimes.com and offer a choice
+  // (rather than dead-ending in the no-feed fallback).
+  await page.locator('.feed-choices, .no-feed').first().waitFor({ state: 'visible', timeout: 15000 })
+  check('publisher feed discovered (not dead-ended)', (await page.locator('.feed-choices').count()) === 1)
+  const srcBefore = await page.locator('.sidebar .source').count()
+  await page.locator('.feed-choice').first().click()
+  await page
+    .waitForFunction((n) => document.querySelectorAll('.sidebar .source').length > n, srcBefore, {
+      timeout: 8000,
+    })
+    .catch(() => {})
+  check('subscribing to the publisher feed adds a source', (await page.locator('.sidebar .source').count()) > srcBefore)
 
   console.log('\nPhone layout (drill-down navigation)')
   const mp = await context.newPage()
