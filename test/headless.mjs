@@ -108,6 +108,10 @@ try {
     if (url.includes('/article/')) {
       return route.fulfill({ contentType: 'text/html', body: articleHtml() })
     }
+    // Small delay on feed responses so the transient "Refreshing..." popup is
+    // observable in the test (real feeds take a beat; the mock is otherwise
+    // instant).
+    await new Promise((r) => setTimeout(r, 500))
     return route.fulfill({ contentType: 'application/rss+xml', body: feedXml(host) })
   })
 
@@ -268,9 +272,11 @@ try {
     .locator('.toast-overlay')
     .evaluate((el) => getComputedStyle(el).pointerEvents === 'none')
   check('overlay is click-through', clickThrough)
-  // Loading popup resolves to a dismissible confirmation.
-  await page.locator('.toast.ok, .toast.error').first().waitFor({ state: 'visible', timeout: 15000 })
-  check('popup reports completion', (await page.locator('.toast').innerText()).length > 0)
+  // The popup hides itself once the initial articles load; the rest of the
+  // feeds keep loading in the background without keeping the popup up.
+  await page.locator('.toast').waitFor({ state: 'hidden', timeout: 15000 })
+  check('popup auto-hides once articles load', (await page.locator('.toast').count()) === 0)
+  check('articles are present after the popup hides', (await page.locator('.item').count()) >= 1)
 
   console.log('\nPhone layout (drill-down navigation)')
   const mp = await context.newPage()

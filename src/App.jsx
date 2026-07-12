@@ -119,32 +119,57 @@ export default function App() {
   const loadArticles = useCallback(async (feedList) => {
     setLoading(true)
     notify(`Refreshing ${feedList.length} feed${feedList.length === 1 ? '' : 's'}...`, 'loading')
-    const results = await Promise.allSettled(feedList.map((f) => fetchFeed(f)))
-    const all = []
+
+    const collected = []
     const errs = {}
-    results.forEach((r, i) => {
-      const feed = feedList[i]
-      if (r.status === 'fulfilled') {
-        all.push(...r.value)
-      } else {
-        errs[feed.url] = r.reason?.message || 'Failed to load'
-      }
-    })
-    // dedupe by id, newest first
-    const seen = new Set()
-    const deduped = all
-      .sort((a, b) => b.time - a.time)
-      .filter((a) => (seen.has(a.id) ? false : (seen.add(a.id), true)))
-    setArticles(deduped)
+    let dismissed = false
+
+    // Re-sort + de-dupe everything collected so far and render it.
+    const render = () => {
+      const seen = new Set()
+      const deduped = collected
+        .slice()
+        .sort((a, b) => b.time - a.time)
+        .filter((a) => (seen.has(a.id) ? false : (seen.add(a.id), true)))
+      setArticles(deduped)
+      return deduped
+    }
+
+    // Fetch feeds in parallel but render each one's articles as it arrives, so
+    // the initial set shows without waiting for the slowest feed. The refresh
+    // popup hides itself the moment the first articles land; the remaining feeds
+    // keep loading in the background and quietly extend the list.
+    await Promise.all(
+      feedList.map((f) =>
+        fetchFeed(f)
+          .then((items) => {
+            collected.push(...items)
+            render()
+            if (!dismissed && collected.length) {
+              dismissed = true
+              dismissToast()
+            }
+          })
+          .catch((err) => {
+            errs[f.url] = err?.message || 'Failed to load'
+          })
+      )
+    )
+
+    const deduped = render()
     setErrors(errs)
     setLoading(false)
+    // Make sure the popup is gone even if nothing loaded, and flag any feeds
+    // that failed (this toast auto-clears; it is not the persistent one).
+    if (!dismissed) dismissToast()
     const failed = Object.keys(errs).length
     if (failed) {
-      notify(`Loaded ${deduped.length} articles · ${failed} feed${failed === 1 ? '' : 's'} failed`, 'error')
-    } else {
-      notify(`Loaded ${deduped.length} articles`, 'ok')
+      notify(
+        `${deduped.length} articles · ${failed} feed${failed === 1 ? '' : 's'} unavailable`,
+        'error'
+      )
     }
-  }, [notify])
+  }, [notify, dismissToast])
 
   useEffect(() => {
     ;(async () => {
