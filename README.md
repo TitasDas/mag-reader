@@ -1,211 +1,122 @@
 # Readstand
 
-A clean, minimal magazine and blog aggregator packaged as a Chrome extension.
-It pulls the RSS/Atom feeds of the publications you follow into one unified,
-newest-first reading list. Articles whose feeds carry full text (Quanta, Aeon,
-and similar) read inline; paywalled ones show a summary with a one-tap link to
-the original.
+**Your magazines and blogs, in one calm place. No feed algorithm. No noise. Just the reading you chose.**
 
-Built with React + Vite. The same codebase is designed to later wrap into a
-Tauri Linux desktop app with minimal changes.
-
-## Screenshots
-
-Reading view in light and dark (Readstand follows your OS theme):
+Readstand pulls the RSS and Atom feeds of the publications you actually care about into a single, fast, distraction-free reader. It runs as a Chrome extension, an installable web app for your phone, and a native Linux desktop app, all from the same code. Everything is stored locally. No account, no tracking, no one deciding what you see.
 
 ![Readstand, light theme](screenshots/desktop-light.png)
 
 ![Readstand, dark theme](screenshots/desktop-dark.png)
 
-The native Linux desktop app (Tauri) running live feeds:
+---
 
-![Readstand desktop app on Linux](screenshots/desktop-linux.png)
+## Why bother reading on purpose?
 
-## Install
+Most of what you read now is chosen by a recommendation engine optimized to keep you scrolling. Readstand flips that: you pick the sources, you get everything they publish, in order, and then you close the tab. That small shift, from feed to reading list, is worth more than it sounds.
 
-Readstand runs in any Chromium browser (Chrome, Edge, Brave, Vivaldi).
+The research on long-form reading is genuinely encouraging:
 
-### Option A: from a release (no build tools needed)
+- **It rewires your brain, measurably.** Neuroscientists at Emory University scanned readers every day while they worked through a novel. Reading produced real, lasting increases in brain connectivity, including in regions tied to language and to physical sensation, and the effect persisted for days after each session ([Emory / Brain Connectivity, 2013](https://pmc.ncbi.nlm.nih.gov/articles/PMC3868356/)).
+- **Readers live longer.** A Yale study followed 3,635 people for 12 years. Those who read books for about half an hour a day outlived non-readers by nearly two years, even after adjusting for education, wealth, and health. The effect was strongest for deep, book-length reading ([Yale / Social Science & Medicine, 2016](https://pubmed.ncbi.nlm.nih.gov/27471129/)).
+- **Attention is a muscle.** In *Reader, Come Home*, cognitive scientist Maryanne Wolf argues that deep reading, the slow immersive kind, builds the very focus that endless scrolling erodes. Readstand is built for that mode: one article, full width, nothing blinking at you.
 
-1. Download the latest `readstand-<version>.zip` from the
-   [Releases page](https://github.com/TitasDas/mag-reader/releases).
-2. Unzip it into a folder you intend to keep. Chrome loads the extension from
-   that folder, so do not delete it afterwards.
-3. Open `chrome://extensions`.
-4. Turn on **Developer mode** (top right).
-5. Click **Load unpacked** and select the unzipped folder.
-6. Click the Readstand icon in the toolbar to open it.
+These are associations from real studies, not medical promises. But the direction is clear, and it points at the same thing: reading things you chose, slowly, is good for the machine between your ears.
 
-### Option B: build from source
+Readstand adds one more idea on top: **reading is where your next idea comes from.** So it also helps you catch and keep those sparks (see Notes, below).
 
+---
+
+## What you get
+
+### One unified, newest-first feed
+Every source you follow, merged into a single timeline. Filter by **All / Unread / Saved**, jump to any one publication, or search across everything. Full text renders inline where the feed provides it; where it does not, one tap opens the original.
+
+### A real reading experience
+- **Reader mode** extracts the clean article from the page, like Safari or Firefox Reader View, images and all.
+- **Archived snapshot** opens the article through archive.today (with mirror fallback), which is also how you slip past a soft paywall.
+- **Text-only toggle** strips images for pure focus, and **A- / A+ zoom** sets your comfortable reading size. Both are remembered.
+- In-article links open inside the reader, with a Back trail, so you can follow a thread without losing your place.
+
+### Continue reading
+Readstand quietly tracks how far you got in each article. Come back tomorrow and the ones you started but did not finish are waiting in a **Continue reading** list in the sidebar, each with a progress bar. Click one and it drops you exactly where you stopped.
+
+### Notes and highlights, exportable
+Select any sentence to save it as a highlight. Jot a quick **Learned** or **To read** note without leaving the article. Everything lands in a Notes panel you can filter, and one click exports the lot to a **Markdown file**, ready for Obsidian or any notes app. Never lose a learning to tomorrow-morning-you again.
+
+![Notes and highlights, with Markdown export](screenshots/notes-dark.png)
+
+### Add anything, even sites that hide their feed
+Paste a blog homepage, a specific post, or a raw feed URL. Readstand auto-discovers the feed. For big publishers whose article pages hide their feed on another host (New York Times, The Guardian, Washington Post, BBC, The Verge, Financial Times, WSJ, The Economist, Bloomberg, Ars Technica, Medium), it knows the pattern and subscribes you to the right section. If there is genuinely no feed, it will still let you read that one article, and offer to report the miss.
+
+### Built for the couch, the commute, and the desk
+Fully responsive. On a phone it becomes a single-pane, tap-to-read experience with a slide-in sources drawer. Install it to your home screen and it runs full screen, offline-capable.
+
+![Readstand on a phone](screenshots/mobile-dark.png)
+
+### Yours, and private
+No accounts. No servers. No analytics. Your feeds, your read history, your notes, all live in local storage on your own device. Back them up any time with OPML export.
+
+---
+
+## Get it running
+
+Readstand runs three ways from one codebase. Pick whichever fits.
+
+### Chrome extension (fastest)
 ```bash
 git clone https://github.com/TitasDas/mag-reader
 cd mag-reader
 npm install
-npm run build     # outputs the extension to dist/
+npm run build
 ```
+Then open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and select the `dist/` folder. Click the Readstand icon to open it.
 
-Then load the `dist/` folder with **Load unpacked** (steps 3 to 6 above).
-
-Note: extensions load per browser profile, so repeat the load step in each
-profile where you want Readstand.
-
-## Features
-
-- Unified timeline across all your feeds, newest first
-- Filter by **All / Unread / Saved**, or by individual source
-- Full-text reading pane where the feed provides it; link-out where it does not
-- **Reader mode** that extracts the readable article from the page's own HTML
-  (like Firefox/Safari Reader View)
-- **Archived snapshot** to open the article on archive.today in one click
-- **Images / Text-only toggle** to read with the publication's pictures, or
-  strip them for a distraction-free text view (your choice is remembered)
-- **Add any blog by URL**: paste a site or post URL (for example
-  `lesswrong.com/about`) and it auto-discovers the RSS/Atom/JSON feed and
-  subscribes
-- **Auto-refresh**: a background worker checks your feeds every 30 minutes and
-  shows a count of new posts as a badge on the toolbar icon
-- **Pick the right feed** when a site exposes several (posts, comments, podcast)
-- **OPML import / export** to back up your subscriptions or move them between
-  readers
-- **Responsive** layout for phone and tablet: a slide-in sources drawer, and a
-  single-pane list ↔ reader drill-down on phones
-- **Installable as a PWA** on phones/tablets/desktop (add to home screen),
-  with an offline app shell
-- Everything stored locally, no accounts, no server
-- Search across titles and previews
-
-## Use it on a phone or tablet (PWA)
-
-A Chrome *extension* can't install on Android/iOS, so for mobile Readstand also
-builds as an installable web app (PWA) from the same code.
-
-1. **Feeds need a proxy on the web.** Unlike the extension, a web page can't read
-   cross-origin feeds, so deploy the tiny CORS proxy in [`proxy/worker.js`](proxy/worker.js)
-   (a Cloudflare Worker; instructions are in that file).
-2. **Build pointing at it and host `dist/` over HTTPS:**
-   ```bash
-   VITE_FEED_PROXY="https://readstand-proxy.<you>.workers.dev/?url=" npm run build
-   # deploy dist/ to any static host (Cloudflare Pages, Netlify, Vercel, GitHub Pages)
-   ```
-3. Open the hosted URL on your device and **Add to Home Screen**. It launches
-   full-screen and works offline for already-loaded content.
-
-The build with no `VITE_FEED_PROXY` still works as the extension (which fetches
-directly). Feed auto-discovery is most reliable in the extension; on the hosted
-PWA, pasting a direct feed URL is the surest path.
-
-## Linux desktop app (Tauri)
-
-Readstand also wraps as a native Linux desktop app via [Tauri](https://tauri.app)
-from the same code. On the desktop it fetches feeds through Tauri's Rust HTTP
-plugin, so (like the extension) it needs **no proxy** and hits no CORS wall.
-
-### Prerequisites (one time)
-
-1. **Rust toolchain** (installs to `~/.cargo`, no root needed):
-
-   ```bash
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-   ```
-
-2. **System WebView + build libraries.** On Linux Mint 21.3 / Ubuntu 22.04
-   (Debian-based; see [tauri.app](https://tauri.app/start/prerequisites/) for
-   other distros):
-
-   ```bash
-   sudo apt update
-   sudo apt install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
-     libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-   ```
-
-### Run / build
+### Linux desktop app (native)
+A real desktop window via [Tauri](https://tauri.app). On the desktop it fetches feeds natively, so it needs no proxy and hits no CORS wall.
 
 ```bash
-# In a fresh shell, put cargo on PATH first:
+# one-time prerequisites
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+sudo apt update && sudo apt install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+  libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev   # Debian / Ubuntu / Mint
+
 . "$HOME/.cargo/env"
-
 npm install
-npm run tauri:dev      # launch the app in a dev window (hot reload)
-npm run tauri:build    # produce a .deb and AppImage in
-                       # src-tauri/target/release/bundle/
+npm run tauri:build   # builds a .deb and an AppImage in src-tauri/target/release/bundle/
 ```
 
-The first build compiles ~460 Rust crates and takes a few minutes; later builds
-are incremental and fast. `npm run tauri:build` runs `npm run build` first, so
-it always bundles the latest frontend.
+![The native Linux desktop app running live feeds](screenshots/desktop-linux.png)
 
-Icons for the desktop app live in `src-tauri/icons/` and are regenerated by
-`npm run icons` alongside the extension/PWA icons.
-
-## Roadmap
-
-Planned, not yet built:
-
-- **Novelty-based recommendations**: surface articles that are genuinely new or
-  different from what you have already read, rather than only the most recent.
-- **Automatic feed detection from any link**: find the right feed for any URL
-  you paste, even when a page hides or omits its autodiscovery tag.
-- **UI/UX improvements**: keyboard navigation, and refinements to the reading
-  pane and source management.
-
-## Develop
-
+### On your phone (installable web app)
+A Chrome extension cannot install on a phone, so Readstand also builds as a PWA. Because a web page (unlike the extension) cannot read cross-origin feeds, deploy the tiny CORS proxy in [`proxy/worker.js`](proxy/worker.js), then:
 ```bash
-npm install
-npm run dev      # runs in a normal browser tab (uses localStorage)
+VITE_FEED_PROXY="https://your-proxy.workers.dev/?url=" npm run build
+# host dist/ over HTTPS anywhere, open it on your phone, and Add to Home Screen
 ```
 
-In dev mode, cross-origin feeds that lack permissive CORS headers may fail to
-load. That is expected. Inside the packaged extension they load fine because the
-extension is granted host permissions.
+---
 
-## Reading full articles
+## The story behind it
 
-Feeds that carry full text render completely in the reading pane. For the rest:
+Readstand was built by **Titas Das**, an applied machine learning scientist and software engineer who has never quite gotten over magazines.
 
-- **Reader mode** fetches the article's own public HTML and extracts the body.
-  This works when the page ships its text (including many overlay or "soft"
-  paywalls that send the article and hide it with CSS). It cannot recover text a
-  server never sends, so a hard paywall yields nothing by design.
-- **Archived snapshot** opens the page on [archive.today](https://archive.ph), a
-  public web-archiving service.
-- **Open original** takes you to the publisher, where your own subscription
-  applies.
+The obsession started with **Gizmodo**. Long before he was shipping ML systems, he was reading it cover to cover and coming away with wild ideas about the next generation of consumer electronics: a genuinely portable air conditioner, kitchens that cook for you, appliances that do the boring prep so you get to the good part. Most people read that stuff and move on. He built it. His work spans **intelligent cooking automation** (the automatic induction cooker), a **robotic ingredient-preparation system** (yes, a robot that chops your vegetables), and OCR-driven food apps, alongside the day job in machine learning, robotics, and, more recently, climate and sustainability tech.
 
-This tool does not bypass DRM and does not fetch content from shadow libraries.
+The throughline: a good magazine is an idea reactor. You feed it attention, and ideas come out. But the modern reading experience is hostile to that, feeds fighting for your attention, half-read tabs, sparks you forget by morning. He has a repo literally called `TheEconomistDownload`, because getting the reading *in* has always been the friction.
 
-## Adding blogs
+Readstand is the tool he wanted: a quiet place to read widely on purpose, and, just as importantly, to **catch the ideas that reading throws off** before they evaporate. Read, highlight, note, export, build the thing.
 
-Paste any of these into the **Add blog or feed URL** box in the sidebar:
+- GitHub: [@TitasDas](https://github.com/TitasDas)
+- LinkedIn: [titas-das](https://www.linkedin.com/in/titas-das/)
+- Art: [artstation.com/titasdas](https://artstation.com/titasdas)
 
-- a site homepage, `lesswrong.com`
-- any page on the site, `https://www.lesswrong.com/about`
-- the feed itself, `https://www.lesswrong.com/feed.xml`
+---
 
-It checks whether the URL is already a feed, then reads the page's feed
-autodiscovery tags, then probes common feed paths (`/feed`, `/rss.xml`,
-`/index.xml`, and similar). RSS, Atom, and JSON Feed are all supported. If a
-site offers more than one feed (for example posts vs comments), you pick which
-to subscribe to. Once subscribed, new posts are pulled in automatically on
-refresh.
+## Notes for the curious
 
-## Backup and migration (OPML)
+- **Default sources** to get you started: Quanta, Aeon, Nautilus, The Atlantic, The New Yorker, MIT Technology Review, Wired, The Economist. Add or remove any of them in the app.
+- **Paywalls** stand. Readstand does not crack DRM or pull from shadow libraries. For paywalled pieces it gives you the headline and a link, plus the archived-snapshot option, which uses your own right to read.
+- **Missing a publisher?** If a site has no discoverable feed, use **Report missing feed** in the app to open a prefilled issue, and a pattern can be added.
+- **Develop / test:** `npm run dev` for a live server, `npm run test:e2e` for the headless end-to-end suite, `npm run icons` and `npm run shots` to regenerate the icon set and screenshots.
 
-Use **Export OPML** / **Import OPML** at the bottom of the sidebar to save your
-subscription list or bring one over from another reader. OPML is the standard
-format every feed reader understands.
-
-## Calibre (companion workflow)
-
-[Calibre](https://calibre-ebook.com) can download many periodicals on a schedule
-via its built-in recipes (**Fetch news**), delivering a clean EPUB/PDF to your
-reader or e-ink device. Recipes for paywalled titles use **your own subscription
-credentials**, which you enter in Calibre. A Chrome extension cannot drive
-Calibre directly, so run it alongside Readstand when you want an offline,
-packaged issue.
-
-## Default feeds
-
-Quanta, Aeon, Nautilus, The Atlantic, The New Yorker, MIT Technology Review,
-Wired, The Economist. Edit `src/feeds.js` or add and remove feeds in the app.
+Happy reading.

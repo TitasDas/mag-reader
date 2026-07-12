@@ -1,7 +1,7 @@
-// Generate desktop screenshots of Readstand at the native Tauri window size
-// (1200x820), in light and dark themes, with an article open. Serves the built
-// bundle and mocks feeds with realistic content so the shots look populated.
-//   npm run build && node scripts/shots.mjs
+// Generate marketing screenshots of Readstand at the native Tauri window size
+// (1200x820) plus a mobile view and the Notes panel, in light and dark, with
+// realistic mocked content so the shots look populated.
+//   npm run shots   (runs `vite build` first)
 import { chromium } from 'playwright'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -13,7 +13,6 @@ const OUT = resolve(ROOT, 'screenshots')
 const PORT = 4320
 const BASE = `http://localhost:${PORT}/`
 
-// A tasteful inline image so the reading pane isn't all text (no network needed).
 const IMG =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(
@@ -25,7 +24,6 @@ const IMG =
     </svg>`
   )
 
-// Per-source article sets with plausible titles + multi-paragraph bodies.
 const P = (n) =>
   Array.from(
     { length: n },
@@ -77,7 +75,9 @@ async function waitForServer() {
   for (let i = 0; i < 60; i++) {
     try {
       if ((await fetch(BASE)).ok) return
-    } catch {}
+    } catch {
+      /* not up yet */
+    }
     await new Promise((r) => setTimeout(r, 200))
   }
   throw new Error('preview did not start')
@@ -85,12 +85,7 @@ async function waitForServer() {
 
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--no-sandbox'] })
 
-async function shot(theme, file) {
-  const ctx = await browser.newContext({
-    viewport: { width: 1200, height: 820 },
-    deviceScaleFactor: 2,
-    colorScheme: theme,
-  })
+async function applyRoute(ctx) {
   await ctx.route(/^https?:\/\/(?!localhost)/, (route) => {
     const host = (() => {
       try {
@@ -99,7 +94,6 @@ async function shot(theme, file) {
         return ''
       }
     })()
-    // Map known feed hosts to a named source; anything else gets Quanta's set.
     const map = {
       'api.quantamagazine.org': 'Quanta',
       'aeon.co': 'Aeon',
@@ -108,13 +102,21 @@ async function shot(theme, file) {
       'nautil.us': 'Nautilus',
       'www.wired.com': 'Wired',
     }
-    const source = map[host] || 'Quanta'
-    return route.fulfill({ contentType: 'application/rss+xml', body: rss(source) })
+    return route.fulfill({ contentType: 'application/rss+xml', body: rss(map[host] || 'Quanta') })
   })
+}
+
+// Reading view with an article open, light or dark.
+async function shotReader(theme, file) {
+  const ctx = await browser.newContext({
+    viewport: { width: 1200, height: 820 },
+    deviceScaleFactor: 2,
+    colorScheme: theme,
+  })
+  await applyRoute(ctx)
   const page = await ctx.newPage()
   await page.goto(BASE, { waitUntil: 'domcontentloaded' })
   await page.locator('.item').first().waitFor({ timeout: 15000 })
-  // Open the flagship article so the reading pane is populated.
   await page.getByText('How Nature Hides Its Deepest Symmetries').click()
   await page.locator('.reader-title').waitFor({ timeout: 5000 })
   await page.waitForTimeout(400)
@@ -123,10 +125,84 @@ async function shot(theme, file) {
   await ctx.close()
 }
 
+// The Notes panel, pre-seeded with a few sample notes.
+async function shotNotes(file) {
+  const ctx = await browser.newContext({
+    viewport: { width: 1200, height: 820 },
+    deviceScaleFactor: 2,
+    colorScheme: 'dark',
+  })
+  await ctx.addInitScript(() => {
+    const now = Date.now()
+    localStorage.setItem(
+      'notes',
+      JSON.stringify([
+        {
+          id: 'n1',
+          type: 'learned',
+          text: 'Neuronpedia builds open-source interpretability tools for LLMs.',
+          createdAt: now - 3600000,
+          articleTitle: 'The Cells That Keep Time Without a Clock',
+          articleLink: 'https://example.com/1',
+          source: 'Quanta',
+        },
+        {
+          id: 'n2',
+          type: 'todo',
+          text: 'Read about the open-source TransAuto algorithm from Google.',
+          createdAt: now - 7200000,
+          articleTitle: 'The Battery Chemistry Quietly Winning',
+          articleLink: 'https://example.com/2',
+          source: 'MIT Technology Review',
+        },
+        {
+          id: 'n3',
+          type: 'highlight',
+          text: 'The picture that is emerging is stranger and more elegant than anyone expected.',
+          createdAt: now - 9000000,
+          articleTitle: 'How Nature Hides Its Deepest Symmetries',
+          articleLink: 'https://example.com/3',
+          source: 'Quanta',
+        },
+      ])
+    )
+  })
+  await applyRoute(ctx)
+  const page = await ctx.newPage()
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' })
+  await page.locator('.item').first().waitFor({ timeout: 15000 })
+  await page.locator('.sidebar-footer').getByRole('button', { name: /^Notes/ }).click()
+  await page.locator('.notes-modal').waitFor({ timeout: 5000 })
+  await page.waitForTimeout(300)
+  await page.screenshot({ path: resolve(OUT, file) })
+  console.log('wrote screenshots/' + file)
+  await ctx.close()
+}
+
+// Phone view (the list).
+async function shotMobile(file) {
+  const ctx = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 3,
+    colorScheme: 'dark',
+    hasTouch: true,
+  })
+  await applyRoute(ctx)
+  const page = await ctx.newPage()
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' })
+  await page.locator('.item').first().waitFor({ timeout: 15000 })
+  await page.waitForTimeout(400)
+  await page.screenshot({ path: resolve(OUT, file) })
+  console.log('wrote screenshots/' + file)
+  await ctx.close()
+}
+
 try {
   await waitForServer()
-  await shot('light', 'desktop-light.png')
-  await shot('dark', 'desktop-dark.png')
+  await shotReader('light', 'desktop-light.png')
+  await shotReader('dark', 'desktop-dark.png')
+  await shotNotes('notes-dark.png')
+  await shotMobile('mobile-dark.png')
 } finally {
   await browser.close()
   server.kill()
