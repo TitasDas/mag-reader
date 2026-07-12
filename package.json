@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "icons": "node scripts/gen-icons.mjs",
+    "shots": "vite build && node scripts/shots.mjs",
     "test:e2e": "vite build && node test/headless.mjs",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",

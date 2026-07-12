@@ -11,11 +11,15 @@ Tauri Linux desktop app with minimal changes.
 
 ## Screenshots
 
-Light and dark themes (Readstand follows your OS):
+Reading view in light and dark (Readstand follows your OS theme):
 
-![Readstand, light theme](screenshots/reader-light.png)
+![Readstand, light theme](screenshots/desktop-light.png)
 
-![Readstand, dark theme](screenshots/reader-dark.png)
+![Readstand, dark theme](screenshots/desktop-dark.png)
+
+The native Linux desktop app (Tauri) running live feeds:
+
+![Readstand desktop app on Linux](screenshots/desktop-linux.png)
 
 ## Install
 
@@ -78,7 +82,7 @@ builds as an installable web app (PWA) from the same code.
 
 1. **Feeds need a proxy on the web.** Unlike the extension, a web page can't read
    cross-origin feeds, so deploy the tiny CORS proxy in [`proxy/worker.js`](proxy/worker.js)
-   (a Cloudflare Worker — instructions are in that file).
+   (a Cloudflare Worker; instructions are in that file).
 2. **Build pointing at it and host `dist/` over HTTPS:**
    ```bash
    VITE_FEED_PROXY="https://readstand-proxy.<you>.workers.dev/?url=" npm run build
