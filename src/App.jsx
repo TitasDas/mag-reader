@@ -76,6 +76,14 @@ export default function App() {
   // Continue reading: id -> { id, title, link, source, time, pct, at }
   const [reading, setReading] = useState({})
   const [showContinue, setShowContinue] = useState(true)
+  // Notes / highlights: [{ id, type:'learned'|'todo'|'highlight', text, createdAt,
+  // articleId?, articleTitle?, articleLink?, source? }]
+  const [notes, setNotes] = useState([])
+  const [showNotes, setShowNotes] = useState(false)
+  const [notesFilter, setNotesFilter] = useState('all') // all|learned|todo|highlight
+  const [sel, setSel] = useState(null) // highlight popover: { text, top, left }
+  const [noteDraft, setNoteDraft] = useState(null) // reader composer: { text, type } | null
+  const [modalDraft, setModalDraft] = useState({ text: '', type: 'learned' })
   const readerRef = useRef(null) // the scrolling reader pane
   const readingSaveTimer = useRef(null)
   // Persist reading progress at most a couple times a second while scrolling.
@@ -198,13 +206,14 @@ export default function App() {
 
   useEffect(() => {
     ;(async () => {
-      const [savedFeeds, read, saved, imgs, savedZoom, savedReading] = await Promise.all([
+      const [savedFeeds, read, saved, imgs, savedZoom, savedReading, savedNotes] = await Promise.all([
         store.get('feeds', null),
         store.get('readIds', {}),
         store.get('savedIds', {}),
         store.get('showImages', true),
         store.get('readerZoom', 1),
         store.get('reading', {}),
+        store.get('notes', []),
       ])
       const feedList = savedFeeds && savedFeeds.length ? savedFeeds : DEFAULT_FEEDS
       setFeeds(feedList)
@@ -213,6 +222,7 @@ export default function App() {
       setShowImages(imgs !== false)
       setZoom(clampZoom(Number(savedZoom) || 1))
       setReading(savedReading || {})
+      setNotes(Array.isArray(savedNotes) ? savedNotes : [])
       // Persist the defaults on first run so the background worker can see them.
       if (!savedFeeds || !savedFeeds.length) store.set('feeds', feedList)
       // Opening the reader clears the "new posts" badge.
@@ -259,6 +269,11 @@ export default function App() {
         .sort((a, b) => b.at - a.at)
         .slice(0, 6),
     [reading]
+  )
+
+  const filteredNotes = useMemo(
+    () => (notesFilter === 'all' ? notes : notes.filter((n) => n.type === notesFilter)),
+    [notes, notesFilter]
   )
 
   // ---- reader view derivation ---------------------------------------------
@@ -340,6 +355,90 @@ export default function App() {
       persistReadingSoon(next)
       return next
     })
+    setSel(null) // the highlight popover would be mispositioned after scrolling
+  }
+
+  // ---- notes / highlights --------------------------------------------------
+  function articleMeta(a) {
+    return a
+      ? { articleId: a.id, articleTitle: a.title, articleLink: a.link, source: a.source }
+      : {}
+  }
+  function addNote(partial) {
+    const id =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.round(Math.random() * 1e6)}`
+    setNotes((n) => {
+      const next = [{ id, createdAt: Date.now(), ...partial }, ...n]
+      store.set('notes', next)
+      return next
+    })
+    notify(partial.type === 'highlight' ? 'Highlight saved' : 'Note saved', 'ok')
+  }
+  function deleteNote(id) {
+    setNotes((n) => {
+      const next = n.filter((x) => x.id !== id)
+      store.set('notes', next)
+      return next
+    })
+  }
+  // Show the "Save highlight" popover when text is selected inside the reader.
+  function onReaderMouseUp() {
+    const s = typeof window !== 'undefined' ? window.getSelection() : null
+    const text = s && s.rangeCount ? s.toString().trim() : ''
+    if (!text || text.length < 3) {
+      setSel(null)
+      return
+    }
+    const rect = s.getRangeAt(0).getBoundingClientRect()
+    if (!rect || (!rect.width && !rect.height)) {
+      setSel(null)
+      return
+    }
+    setSel({ text, top: rect.top, left: rect.left + rect.width / 2 })
+  }
+  function saveHighlight() {
+    if (!sel) return
+    addNote({ type: 'highlight', text: sel.text, ...articleMeta(selected) })
+    setSel(null)
+    window.getSelection()?.removeAllRanges()
+  }
+  function saveDraftNote() {
+    const t = (noteDraft?.text || '').trim()
+    if (!t) return
+    addNote({ type: noteDraft.type, text: t, ...articleMeta(selected) })
+    setNoteDraft(null)
+  }
+  function addModalNote() {
+    const t = modalDraft.text.trim()
+    if (!t) return
+    addNote({ type: modalDraft.type, text: t })
+    setModalDraft({ text: '', type: modalDraft.type })
+  }
+  function exportNotesMarkdown() {
+    if (!notes.length) return
+    const clean = (t) => (t || '').replace(/\s+/g, ' ').trim()
+    const linkOf = (n) =>
+      n.articleLink ? ` ([${clean(n.articleTitle) || n.source || 'source'}](${n.articleLink}))` : ''
+    const section = (title, type, render) => {
+      const items = notes.filter((n) => n.type === type)
+      return items.length ? `## ${title}\n\n${items.map(render).join('\n')}\n\n` : ''
+    }
+    const today = new Date().toISOString().slice(0, 10)
+    let md = `# Readstand notes\n\n_Exported ${today}_\n\n`
+    md += section('Learned', 'learned', (n) => `- ${clean(n.text)}${linkOf(n)}`)
+    md += section('To read', 'todo', (n) => `- ${clean(n.text)}${linkOf(n)}`)
+    md += section('Highlights', 'highlight', (n) => `> ${clean(n.text)}${linkOf(n)}`)
+    const blob = new Blob([md], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'readstand-notes.md'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
   }
   function chooseSource(url) {
     setSourceFilter(url)
@@ -679,6 +778,10 @@ export default function App() {
         </div>
 
         <div className="sidebar-footer">
+          <button className="link" onClick={() => setShowNotes(true)}>
+            Notes{notes.length ? ` (${notes.length})` : ''}
+          </button>
+          <span className="dot">·</span>
           <button className="link" onClick={exportOpml} disabled={!feeds.length}>
             Export OPML
           </button>
@@ -817,6 +920,13 @@ export default function App() {
               <button className="btn ghost" onClick={() => toggleSaved(selected)}>
                 {savedIds[selected.id] ? '★ Saved' : '☆ Save'}
               </button>
+              <button
+                className={`btn ghost ${noteDraft ? 'active' : ''}`}
+                onClick={() => setNoteDraft((d) => (d ? null : { text: '', type: 'learned' }))}
+                title="Jot a note or learning about this article"
+              >
+                ✎ Note
+              </button>
               <div className="zoom" role="group" aria-label="Text size">
                 <button
                   className="btn ghost zoom-btn"
@@ -846,6 +956,41 @@ export default function App() {
                 </button>
               </div>
             </div>
+            {noteDraft && (
+              <div className="note-compose">
+                <textarea
+                  className="note-input"
+                  value={noteDraft.text}
+                  onChange={(e) => setNoteDraft((d) => ({ ...d, text: e.target.value }))}
+                  placeholder="What did you learn, or want to follow up on?"
+                  rows={2}
+                  autoFocus
+                />
+                <div className="note-compose-row">
+                  <div className="seg">
+                    <button
+                      className={noteDraft.type === 'learned' ? 'active' : ''}
+                      onClick={() => setNoteDraft((d) => ({ ...d, type: 'learned' }))}
+                    >
+                      Learned
+                    </button>
+                    <button
+                      className={noteDraft.type === 'todo' ? 'active' : ''}
+                      onClick={() => setNoteDraft((d) => ({ ...d, type: 'todo' }))}
+                    >
+                      To read
+                    </button>
+                  </div>
+                  <span className="spacer" />
+                  <button className="link" onClick={() => setNoteDraft(null)}>
+                    cancel
+                  </button>
+                  <button className="btn" onClick={saveDraftNote} disabled={!noteDraft.text.trim()}>
+                    Save note
+                  </button>
+                </div>
+              </div>
+            )}
             {readerErr && (
               <div className="reader-note">
                 Reader mode couldn't extract this article ({readerErr}).
@@ -862,11 +1007,116 @@ export default function App() {
               className={`reader-body ${showImages ? '' : 'text-only'}`}
               style={{ '--reader-scale': zoom }}
               onClick={onReaderClick}
+              onMouseUp={onReaderMouseUp}
               dangerouslySetInnerHTML={{ __html: bodyHtml }}
             />
           </article>
         )}
       </main>
+
+      {sel && (
+        <button
+          className="hl-popover"
+          style={{ top: Math.max(8, sel.top - 44), left: sel.left }}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={saveHighlight}
+        >
+          ✎ Save highlight
+        </button>
+      )}
+
+      {showNotes && (
+        <div className="notes-overlay" onClick={() => setShowNotes(false)}>
+          <div className="notes-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="notes-head">
+              <h2>Notes</h2>
+              <button className="icon-btn" onClick={() => setShowNotes(false)} aria-label="Close notes">
+                ✕
+              </button>
+            </div>
+            <div className="notes-tools">
+              <div className="seg">
+                {[
+                  ['all', 'All'],
+                  ['learned', 'Learned'],
+                  ['todo', 'To read'],
+                  ['highlight', 'Highlights'],
+                ].map(([k, label]) => (
+                  <button
+                    key={k}
+                    className={notesFilter === k ? 'active' : ''}
+                    onClick={() => setNotesFilter(k)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <span className="spacer" />
+              <button className="btn ghost" onClick={exportNotesMarkdown} disabled={!notes.length}>
+                Export Markdown
+              </button>
+            </div>
+            <div className="notes-add">
+              <input
+                value={modalDraft.text}
+                onChange={(e) => setModalDraft((d) => ({ ...d, text: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') addModalNote()
+                }}
+                placeholder="Add a note or learning..."
+              />
+              <div className="seg">
+                <button
+                  className={modalDraft.type === 'learned' ? 'active' : ''}
+                  onClick={() => setModalDraft((d) => ({ ...d, type: 'learned' }))}
+                >
+                  Learned
+                </button>
+                <button
+                  className={modalDraft.type === 'todo' ? 'active' : ''}
+                  onClick={() => setModalDraft((d) => ({ ...d, type: 'todo' }))}
+                >
+                  To read
+                </button>
+              </div>
+              <button className="btn" onClick={addModalNote} disabled={!modalDraft.text.trim()}>
+                Add
+              </button>
+            </div>
+            <div className="notes-list">
+              {filteredNotes.length === 0 ? (
+                <div className="empty">
+                  No notes yet. Select text while reading to save a highlight, or use ✎ Note.
+                </div>
+              ) : (
+                filteredNotes.map((n) => (
+                  <div key={n.id} className={`note note-${n.type}`}>
+                    <div className="note-top">
+                      <span className="note-type">
+                        {n.type === 'learned' ? 'Learned' : n.type === 'todo' ? 'To read' : 'Highlight'}
+                      </span>
+                      <span className="note-time">{timeAgo(n.createdAt)}</span>
+                      <button
+                        className="note-del"
+                        onClick={() => deleteNote(n.id)}
+                        aria-label="Delete note"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="note-text">{n.text}</div>
+                    {n.articleLink && (
+                      <button className="note-src link" onClick={() => openExternal(n.articleLink)}>
+                        {n.articleTitle || n.source || 'source'} ↗
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div className="toast-overlay" role="status" aria-live="polite">

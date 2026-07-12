@@ -295,6 +295,53 @@ try {
   const after = await page.locator('.reader').evaluate((el) => el.scrollTop)
   check(`scroll position restored on resume (${Math.round(before)} -> ${Math.round(after)})`, after > before * 0.5)
 
+  console.log('\nNotes and highlights')
+  // Settle any pending resume-scroll first (a scroll dismisses the popover by
+  // design), then select text and fire mouseup to raise the selection popover.
+  await page.locator('.reader').evaluate((el) => {
+    el.scrollTop = 0
+  })
+  await page.waitForTimeout(300)
+  const selectText = () =>
+    page.evaluate(() => {
+      const body = document.querySelector('.reader-body')
+      const p = body.querySelector('p') || body
+      const range = document.createRange()
+      range.selectNodeContents(p)
+      const s = window.getSelection()
+      s.removeAllRanges()
+      s.addRange(range)
+      body.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+    })
+  let popped = false
+  for (let i = 0; i < 3 && !popped; i++) {
+    await selectText()
+    popped = await page.locator('.hl-popover').isVisible().catch(() => false)
+    if (!popped) await page.waitForTimeout(300)
+  }
+  check('highlight popover appears on text selection', popped)
+  await page.evaluate(() => document.querySelector('.hl-popover')?.click())
+  // Add a quick note via the reader composer.
+  await page.locator('.reader-actions button', { hasText: '✎ Note' }).click()
+  await page.locator('.note-input').fill('neuronpedia makes interpretability tools for LLMs')
+  await page.getByRole('button', { name: 'Save note' }).click()
+  // Open the Notes modal and verify what we captured.
+  await page.locator('.sidebar-footer').getByRole('button', { name: /^Notes/ }).click()
+  await page.locator('.notes-modal').waitFor({ state: 'visible', timeout: 4000 })
+  check('notes listed in the modal', (await page.locator('.notes-modal .note').count()) >= 2)
+  check('a highlight was captured', (await page.locator('.notes-modal .note-highlight').count()) >= 1)
+  check(
+    'export markdown is enabled',
+    !(await page.getByRole('button', { name: 'Export Markdown' }).isDisabled())
+  )
+  // Add a follow-up note from inside the modal and filter to it.
+  await page.locator('.notes-add input').fill('read about Google transauto (open source)')
+  await page.locator('.notes-add .seg button', { hasText: 'To read' }).click()
+  await page.locator('.notes-add').getByRole('button', { name: 'Add' }).click()
+  await page.locator('.notes-tools .seg button', { hasText: 'To read' }).click()
+  check('To-read filter shows the follow-up', (await page.locator('.notes-modal .note').count()) >= 1)
+  await page.getByRole('button', { name: 'Close notes' }).click()
+
   console.log('\nCentered status popup')
   // Refresh triggers a load, which raises a centered status popup.
   await page.getByRole('button', { name: /Refresh/ }).click()
