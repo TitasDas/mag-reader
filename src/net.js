@@ -17,6 +17,19 @@ export const isTauri =
   typeof window !== 'undefined' &&
   !!(window.__TAURI_INTERNALS__ || window.__TAURI__)
 
+// Open a URL in the user's real browser / default handler. In the extension and
+// web builds a new tab is fine, but inside the Tauri desktop webview a plain
+// target="_blank" or window.open goes nowhere, so we route through the opener
+// plugin which hands the URL to the OS.
+export async function openExternal(url) {
+  if (!url) return
+  if (isTauri) {
+    const { openUrl } = await import('@tauri-apps/plugin-opener')
+    return openUrl(url)
+  }
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
 export async function feedFetch(url, opts) {
   if (isTauri) {
     // Native HTTP via Rust, bypasses CORS, no proxy required.

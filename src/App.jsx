@@ -3,6 +3,7 @@ import { DEFAULT_FEEDS } from './feeds.js'
 import { fetchFeed } from './rss.js'
 import { fetchReadable, fetchArchived } from './readerMode.js'
 import { discoverFeeds } from './discover.js'
+import { openExternal } from './net.js'
 import { toOpml, parseOpml } from './opml.js'
 import * as store from './storage.js'
 
@@ -316,7 +317,7 @@ export default function App() {
     // Only web pages become in-app articles; other schemes (mailto:, tel:, ...)
     // open the default way.
     if (!/^https?:/i.test(url)) {
-      window.open(url, '_blank', 'noopener,noreferrer')
+      openExternal(url)
       return
     }
     const id = url
@@ -656,9 +657,14 @@ export default function App() {
             </div>
             <h1 className="reader-title">{selected.title}</h1>
             <div className="reader-actions">
-              <a href={selected.link} target="_blank" rel="noreferrer" className="btn">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => openExternal(selected.link)}
+                title="Open the original article in your browser"
+              >
                 Open original ↗
-              </a>
+              </button>
               <button
                 className={`btn ghost ${selMode === 'reader' ? 'active' : ''}`}
                 onClick={() => showInline(selected, 'reader')}

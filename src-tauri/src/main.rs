@@ -6,6 +6,8 @@ fn main() {
         // Native HTTP (Rust-side) so feed/article requests bypass browser CORS,
         // matching the extension's direct-fetch behaviour. No proxy needed.
         .plugin(tauri_plugin_http::init())
+        // Opens "Open original" and other external links in the system browser.
+        .plugin(tauri_plugin_opener::init())
         .run(tauri::generate_context!())
         .expect("error while running Readstand");
 }
