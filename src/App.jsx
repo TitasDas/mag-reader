@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { DEFAULT_FEEDS } from './feeds.js'
 import { fetchFeed } from './rss.js'
 import { fetchReadable, fetchArchived } from './readerMode.js'
@@ -18,6 +18,17 @@ const ZOOM_MIN = 0.8
 const ZOOM_MAX = 2
 const ZOOM_STEP = 0.1
 const clampZoom = (z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z * 10) / 10))
+
+// Cap the reading history so storage doesn't grow without bound; keep the most
+// recently touched entries.
+const READING_MAX = 100
+function capReading(map) {
+  const entries = Object.values(map)
+  if (entries.length <= READING_MAX) return map
+  const out = {}
+  for (const e of entries.sort((a, b) => b.at - a.at).slice(0, READING_MAX)) out[e.id] = e
+  return out
+}
 
 function timeAgo(ms) {
   if (!ms) return ''
@@ -62,6 +73,19 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false) // sources drawer (tablet/phone)
   const [toast, setToast] = useState(null) // { text, type:'loading'|'ok'|'error' } | null
   const toastTimer = useRef(null)
+  // Continue reading: id -> { id, title, link, source, time, pct, at }
+  const [reading, setReading] = useState({})
+  const [showContinue, setShowContinue] = useState(true)
+  const readerRef = useRef(null) // the scrolling reader pane
+  const readingSaveTimer = useRef(null)
+  // Persist reading progress at most a couple times a second while scrolling.
+  const persistReadingSoon = useCallback((next) => {
+    if (readingSaveTimer.current) clearTimeout(readingSaveTimer.current)
+    readingSaveTimer.current = setTimeout(() => {
+      store.set('reading', next)
+      readingSaveTimer.current = null
+    }, 500)
+  }, [])
   const [linkedById, setLinkedById] = useState({}) // id -> article synthesized from a followed in-article link
   const [navStack, setNavStack] = useState([]) // previous selectedIds, for Back within the reader
 
@@ -174,12 +198,13 @@ export default function App() {
 
   useEffect(() => {
     ;(async () => {
-      const [savedFeeds, read, saved, imgs, savedZoom] = await Promise.all([
+      const [savedFeeds, read, saved, imgs, savedZoom, savedReading] = await Promise.all([
         store.get('feeds', null),
         store.get('readIds', {}),
         store.get('savedIds', {}),
         store.get('showImages', true),
         store.get('readerZoom', 1),
+        store.get('reading', {}),
       ])
       const feedList = savedFeeds && savedFeeds.length ? savedFeeds : DEFAULT_FEEDS
       setFeeds(feedList)
@@ -187,6 +212,7 @@ export default function App() {
       setSavedIds(saved || {})
       setShowImages(imgs !== false)
       setZoom(clampZoom(Number(savedZoom) || 1))
+      setReading(savedReading || {})
       // Persist the defaults on first run so the background worker can see them.
       if (!savedFeeds || !savedFeeds.length) store.set('feeds', feedList)
       // Opening the reader clears the "new posts" badge.
@@ -224,6 +250,17 @@ export default function App() {
     [articles, readIds]
   )
 
+  // Articles started but not finished (scrolled past the top, short of the end),
+  // most recently touched first.
+  const continueReading = useMemo(
+    () =>
+      Object.values(reading)
+        .filter((e) => (e.pct || 0) >= 0.02 && (e.pct || 0) < 0.95)
+        .sort((a, b) => b.at - a.at)
+        .slice(0, 6),
+    [reading]
+  )
+
   // ---- reader view derivation ---------------------------------------------
   const selEnh = selected ? enhanced[selected.id] || {} : {}
   const selMode = selected ? viewMode[selected.id] || 'feed' : 'feed'
@@ -237,12 +274,72 @@ export default function App() {
       ? '<p class="reader-loading">Loading the linked article...</p>'
       : '<p>(No text in this feed. Try Reader mode or open the original.)</p>')
 
+  // Restore scroll position when an article (or its content) changes, so you
+  // resume where you left off. Runs on article/content change only, not on every
+  // scroll tick, so it never fights the user's scrolling.
+  useLayoutEffect(() => {
+    const el = readerRef.current
+    if (!el || !selectedId) return
+    const pct = reading[selectedId]?.pct || 0
+    const raf = requestAnimationFrame(() => {
+      const max = el.scrollHeight - el.clientHeight
+      el.scrollTop = pct > 0.02 && pct < 0.98 ? pct * max : 0
+    })
+    return () => cancelAnimationFrame(raf)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, bodyHtml])
+
   // ---- actions -------------------------------------------------------------
   function openArticle(a) {
     setSelectedId(a.id)
     setNavStack([]) // a fresh pick starts a new reading trail; Back goes to the list
     setMobilePane('reader') // on phones, drill into the reading view
     if (!readIds[a.id]) persistRead({ ...readIds, [a.id]: Date.now() })
+    // Record (or refresh) this article in the reading history, keeping any
+    // progress we already had for it.
+    setReading((r) => {
+      const prev = r[a.id]
+      const entry = {
+        id: a.id,
+        title: a.title,
+        link: a.link,
+        source: a.source,
+        time: a.time,
+        pct: prev?.pct || 0,
+        at: Date.now(),
+      }
+      const next = capReading({ ...r, [a.id]: entry })
+      persistReadingSoon(next)
+      return next
+    })
+  }
+  // Reopen something from the Continue reading list. If it has aged out of the
+  // current feed, seed a linked entry so the reader can still render it.
+  function openFromHistory(e) {
+    const inFeed = articles.find((a) => a.id === e.id)
+    if (inFeed) {
+      openArticle(inFeed)
+    } else {
+      const snap = { id: e.id, title: e.title, link: e.link, source: e.source, time: e.time, content: '', preview: '' }
+      setLinkedById((m) => ({ ...m, [e.id]: snap }))
+      openArticle(snap)
+    }
+    setDrawerOpen(false)
+  }
+  // Track how far down the reader has been scrolled for the open article.
+  function onReaderScroll() {
+    const el = readerRef.current
+    if (!el || !selectedId) return
+    const max = el.scrollHeight - el.clientHeight
+    const pct = max > 8 ? Math.min(1, Math.max(0, el.scrollTop / max)) : 0
+    setReading((r) => {
+      const prev = r[selectedId]
+      if (!prev) return r
+      if (Math.abs((prev.pct || 0) - pct) < 0.01) return r
+      const next = { ...r, [selectedId]: { ...prev, pct, at: Date.now() } }
+      persistReadingSoon(next)
+      return next
+    })
   }
   function chooseSource(url) {
     setSourceFilter(url)
@@ -489,6 +586,32 @@ export default function App() {
           ))}
         </div>
 
+        {continueReading.length > 0 && (
+          <div className="continue">
+            <div className="continue-head">
+              <span>Continue reading</span>
+              <button className="link" onClick={() => setShowContinue((v) => !v)}>
+                {showContinue ? 'hide' : 'show'}
+              </button>
+            </div>
+            {showContinue &&
+              continueReading.map((e) => (
+                <button
+                  key={e.id}
+                  className={`cont-item ${selectedId === e.id ? 'active' : ''}`}
+                  onClick={() => openFromHistory(e)}
+                  title={e.title}
+                >
+                  <span className="cont-src">{e.source}</span>
+                  <span className="cont-title">{e.title}</span>
+                  <span className="cont-bar" aria-hidden="true">
+                    <span className="cont-bar-fill" style={{ width: `${Math.round((e.pct || 0) * 100)}%` }} />
+                  </span>
+                </button>
+              ))}
+          </div>
+        )}
+
         <div className="sources">
           <div className="sources-head">
             <span>Sources</span>
@@ -629,7 +752,7 @@ export default function App() {
         )}
       </section>
 
-      <main className="reader">
+      <main className="reader" ref={readerRef} onScroll={onReaderScroll}>
         <div className="reader-topbar">
           <button
             className="icon-btn"

@@ -255,6 +255,46 @@ try {
   check('reset returns to 100%', (await page.getByRole('button', { name: 'Reset text size' }).innerText()) === '100%')
   check('reset restores base size', Math.abs((await fontSize()) - base) < 0.5)
 
+  console.log('\nContinue reading tracker')
+  // Open an article and load reader mode so the body is long enough to scroll.
+  await page.locator('.item').first().click()
+  await page.locator('.reader-title').waitFor({ timeout: 5000 })
+  await page.getByRole('button', { name: 'Reader mode' }).click()
+  await page.waitForFunction(
+    (t) => document.querySelector('.reader-body')?.textContent?.includes(t),
+    BODY_TOKEN,
+    { timeout: 15000 }
+  )
+  // Scroll the reader pane to the middle and wait for the tracker to register.
+  await page.locator('.reader').evaluate((el) => {
+    el.scrollTop = (el.scrollHeight - el.clientHeight) * 0.5
+  })
+  await page.locator('.continue .cont-item').first().waitFor({ state: 'visible', timeout: 6000 })
+  check('Continue reading block appears', (await page.locator('.continue').count()) === 1)
+  check('an in-progress entry is listed', (await page.locator('.cont-item').count()) >= 1)
+  const fillW = await page
+    .locator('.cont-bar-fill')
+    .first()
+    .evaluate((el) => parseFloat(getComputedStyle(el).width))
+  check('progress bar shows progress', fillW > 0)
+  const before = await page.locator('.reader').evaluate((el) => el.scrollTop)
+  // Switch to another article, then resume via the Continue reading entry.
+  await page.locator('.item').nth(1).click()
+  await page.waitForTimeout(200)
+  await page.locator('.cont-item').first().click()
+  await page
+    .waitForFunction(
+      (min) => {
+        const el = document.querySelector('.reader')
+        return el && el.scrollTop > min
+      },
+      before * 0.5,
+      { timeout: 6000 }
+    )
+    .catch(() => {})
+  const after = await page.locator('.reader').evaluate((el) => el.scrollTop)
+  check(`scroll position restored on resume (${Math.round(before)} -> ${Math.round(after)})`, after > before * 0.5)
+
   console.log('\nCentered status popup')
   // Refresh triggers a load, which raises a centered status popup.
   await page.getByRole('button', { name: /Refresh/ }).click()
