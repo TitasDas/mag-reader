@@ -1,7 +1,7 @@
 // Background service worker: opens the reader on toolbar click, and on a timer
 // checks subscribed feeds for new posts and shows the count as a badge. Service
 // workers have no DOM (no DOMParser), so we extract item identifiers with light
-// regexes — enough to detect what's new. The reader page does the full parse.
+// regexes, enough to detect what's new. The reader page does the full parse.
 
 const REFRESH_MINUTES = 30
 

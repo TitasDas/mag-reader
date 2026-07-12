@@ -92,7 +92,7 @@ export async function fetchReadable(url) {
 
 // Public archive snapshots to try, in order. The archive.today service answers
 // on several interchangeable mirror domains (archive.ph/.today/.is) that share
-// the same captures — handy when one domain is blocked or down. The Wayback
+// the same captures, handy when one domain is blocked or down. The Wayback
 // Machine is a separate archive, so it's the cross-service fallback. Each
 // "newest"/latest form redirects to the most recent capture of the page.
 const ARCHIVE_MIRRORS = [

@@ -73,9 +73,9 @@ history or page data is collected, and nothing is sent to any third party.
 - Privacy policy URL: https://github.com/TitasDas/mag-reader/blob/master/PRIVACY.md
 
 ## Assets in this folder
-- `screenshot-1-light.png` (1280x800) — store screenshot 1
-- `screenshot-2-dark.png` (1280x800) — store screenshot 2
-- `promo-tile-440x280.png` (440x280) — small promo tile
+- `screenshot-1-light.png` (1280x800): store screenshot 1
+- `screenshot-2-dark.png` (1280x800): store screenshot 2
+- `promo-tile-440x280.png` (440x280): small promo tile
 - Extension icon (128x128) is at `../public/icons/icon128.png`
 
 ## Packaging

@@ -3,7 +3,7 @@
 //  - Chrome extension: pages have host permissions and can read cross-origin
 //    responses directly, so we just fetch().
 //  - Tauri desktop app: requests go through the Rust HTTP plugin, which is not
-//    subject to browser CORS — so, like the extension, no proxy is needed.
+//    subject to browser CORS, so, like the extension, no proxy is needed.
 //  - Hosted web app / PWA: the browser blocks reading cross-origin responses,
 //    so requests are routed through a proxy configured at build time via
 //    VITE_FEED_PROXY (e.g. "https://my-proxy.workers.dev/?url="). With no proxy
@@ -19,7 +19,7 @@ export const isTauri =
 
 export async function feedFetch(url, opts) {
   if (isTauri) {
-    // Native HTTP via Rust — bypasses CORS, no proxy required.
+    // Native HTTP via Rust, bypasses CORS, no proxy required.
     const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http')
     return tauriFetch(url, opts)
   }

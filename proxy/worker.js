@@ -11,9 +11,9 @@
 //        VITE_FEED_PROXY="https://readstand-proxy.<you>.workers.dev/?url=" npm run build
 //
 // SECURITY NOTE: as written this is an open proxy (it will fetch any URL). For
-// personal use that's usually fine, but if you expose it publicly, lock it down
-// — e.g. restrict Access-Control-Allow-Origin to your app's domain, require a
-// shared secret query param, and/or allowlist target hosts.
+// personal use that's usually fine, but if you expose it publicly, lock it down.
+// For example: restrict Access-Control-Allow-Origin to your app's domain, require
+// a shared secret query param, and/or allowlist target hosts.
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
