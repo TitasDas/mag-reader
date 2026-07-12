@@ -118,19 +118,11 @@ VITE_FEED_PROXY="https://your-proxy.workers.dev/?url=" npm run build
 
 ---
 
-## The story behind it
+## Why it exists
 
-Readstand was built by **Titas Das**, an applied machine learning scientist and software engineer who has never quite gotten over magazines.
+A good magazine is an idea reactor: reading Gizmodo as a kid is what got me tinkering with gadgets (including, once, a robot that chops vegetables). But today's reading fights that, with algorithmic feeds, half-read tabs, and good ideas you forget by morning. Readstand is the tool I wanted: a quiet place to read on purpose, and to catch the sparks before they fade.
 
-The obsession started with **Gizmodo**. Long before he was shipping ML systems, he was reading it cover to cover and coming away with wild ideas about the next generation of consumer electronics: a genuinely portable air conditioner, kitchens that cook for you, appliances that do the boring prep so you get to the good part. Most people read that stuff and move on. He built it. His work spans **intelligent cooking automation** (the automatic induction cooker), a **robotic ingredient-preparation system** (yes, a robot that chops your vegetables), and OCR-driven food apps, alongside the day job in machine learning, robotics, and, more recently, climate and sustainability tech.
-
-The throughline: a good magazine is an idea reactor. You feed it attention, and ideas come out. But the modern reading experience is hostile to that, feeds fighting for your attention, half-read tabs, sparks you forget by morning. He has a repo literally called `TheEconomistDownload`, because getting the reading *in* has always been the friction.
-
-Readstand is the tool he wanted: a quiet place to read widely on purpose, and, just as importantly, to **catch the ideas that reading throws off** before they evaporate. Read, highlight, note, export, build the thing.
-
-- GitHub: [@TitasDas](https://github.com/TitasDas)
-- LinkedIn: [titas-das](https://www.linkedin.com/in/titas-das/)
-- Art: [artstation.com/titasdas](https://artstation.com/titasdas)
+Built by Titas Das. [GitHub](https://github.com/TitasDas) and [LinkedIn](https://www.linkedin.com/in/titas-das/).
 
 ---
 
