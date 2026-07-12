@@ -251,6 +251,16 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.no-feed {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 2px 0;
+}
+.no-feed .btn {
+  padding: 6px 10px;
+  font-size: 12px;
+}
 .sidebar-footer {
   margin-top: auto;
   padding-top: 10px;

@@ -62,6 +62,7 @@ export default function App() {
   const [newFeedUrl, setNewFeedUrl] = useState('')
   const [addStatus, setAddStatus] = useState(null) // {type:'loading'|'error'|'ok', msg}
   const [feedChoices, setFeedChoices] = useState(null) // [{url,title}] when >1 found
+  const [noFeedUrl, setNoFeedUrl] = useState(null) // article URL to offer reading once when no feed found
   const [showManage, setShowManage] = useState(false)
   const fileRef = useRef(null)
   // id -> { reader?: {status,html,error}, archive?: {status,html,error} }
@@ -589,6 +590,7 @@ export default function App() {
     const input = newFeedUrl.trim()
     if (!input) return
     setFeedChoices(null)
+    setNoFeedUrl(null)
     setAddStatus({ type: 'loading', msg: 'Finding feed...' })
     try {
       const candidates = await discoverFeeds(input)
@@ -602,7 +604,57 @@ export default function App() {
         setFeedChoices(fresh)
       }
     } catch (err) {
-      setAddStatus({ type: 'error', msg: err?.message || 'could not add feed' })
+      // No feed found. If this looks like a specific article (a URL with a path),
+      // offer to just read it once instead of dead-ending.
+      const norm = /^https?:\/\//i.test(input) ? input : 'https://' + input
+      let hasPath = false
+      try {
+        hasPath = new URL(norm).pathname.replace(/\/+$/, '').length > 1
+      } catch {
+        /* not a URL */
+      }
+      if (hasPath) {
+        setAddStatus({ type: 'error', msg: "No feed found for that site. You can still read this one article." })
+        setNoFeedUrl(norm)
+      } else {
+        setAddStatus({ type: 'error', msg: err?.message || 'No feed found for that site.' })
+      }
+    }
+  }
+
+  // Read a single article that has no feed: fetch and extract it, then open it
+  // in the reader as a one-off (not subscribed).
+  async function readUrlOnce(url) {
+    notify('Fetching article...', 'loading')
+    try {
+      const art = await fetchReadable(url)
+      let host = url
+      try {
+        host = new URL(url).hostname.replace(/^www\./, '')
+      } catch {
+        /* keep url */
+      }
+      const synth = {
+        id: url,
+        title: art.title || host,
+        link: url,
+        source: host,
+        time: Date.now(),
+        content: art.content,
+        preview: '',
+      }
+      setLinkedById((m) => ({ ...m, [url]: synth }))
+      openArticle(synth)
+      setNewFeedUrl('')
+      setAddStatus(null)
+      setNoFeedUrl(null)
+      setDrawerOpen(false)
+      dismissToast()
+    } catch (e) {
+      notify(
+        `Could not fetch that article (${e?.message || 'failed'}). Try Open in browser.`,
+        'error'
+      )
     }
   }
 
@@ -745,7 +797,10 @@ export default function App() {
           <form className="add-feed" onSubmit={addFeed}>
             <input
               value={newFeedUrl}
-              onChange={(e) => setNewFeedUrl(e.target.value)}
+              onChange={(e) => {
+                setNewFeedUrl(e.target.value)
+                if (noFeedUrl) setNoFeedUrl(null)
+              }}
               placeholder="Add blog or feed URL..."
               disabled={addStatus?.type === 'loading'}
             />
@@ -755,6 +810,16 @@ export default function App() {
           </form>
           {addStatus && (
             <div className={`add-status ${addStatus.type}`}>{addStatus.msg}</div>
+          )}
+          {noFeedUrl && (
+            <div className="no-feed">
+              <button className="btn" onClick={() => readUrlOnce(noFeedUrl)}>
+                Read this article
+              </button>
+              <button className="btn ghost" onClick={() => openExternal(noFeedUrl)}>
+                Open in browser
+              </button>
+            </div>
           )}
           {feedChoices && (
             <div className="feed-choices">

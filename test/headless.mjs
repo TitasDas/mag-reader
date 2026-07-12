@@ -105,6 +105,15 @@ try {
     if (host === 'archive.ph') {
       return route.fulfill({ status: 503, contentType: 'text/plain', body: 'down' })
     }
+    // A site with no discoverable feed: the page is plain HTML (no alternate
+    // link) and every feed-probe path 404s. Exercises the read-one-article
+    // fallback.
+    if (host === 'nofeed.test') {
+      if (/\/feed|\/rss|\/atom|\.xml/.test(url)) {
+        return route.fulfill({ status: 404, contentType: 'text/plain', body: 'nope' })
+      }
+      return route.fulfill({ contentType: 'text/html', body: articleHtml() })
+    }
     if (url.includes('/article/')) {
       return route.fulfill({ contentType: 'text/html', body: articleHtml() })
     }
@@ -265,6 +274,9 @@ try {
     BODY_TOKEN,
     { timeout: 15000 }
   )
+  // Let the resume-scroll rAF settle first, otherwise it can reset our manual
+  // scroll back to the top.
+  await page.waitForTimeout(350)
   // Scroll the reader pane to the middle and wait for the tracker to register.
   await page.locator('.reader').evaluate((el) => {
     el.scrollTop = (el.scrollHeight - el.clientHeight) * 0.5
@@ -364,6 +376,19 @@ try {
   await page.locator('.toast').waitFor({ state: 'hidden', timeout: 15000 })
   check('popup auto-hides once articles load', (await page.locator('.toast').count()) === 0)
   check('articles are present after the popup hides', (await page.locator('.item').count()) >= 1)
+
+  console.log('\nNo-feed fallback (read one article)')
+  await page.locator('.add-feed input').fill('https://nofeed.test/2026/07/05/story.html')
+  await page.locator('.add-feed button[type="submit"]').click()
+  await page.locator('.no-feed').waitFor({ state: 'visible', timeout: 8000 })
+  check('offers to read the article when no feed is found', await page.locator('.no-feed').isVisible())
+  await page.getByRole('button', { name: 'Read this article' }).click()
+  await page.waitForFunction(
+    (t) => document.querySelector('.reader-body')?.textContent?.includes(t),
+    BODY_TOKEN,
+    { timeout: 15000 }
+  )
+  check('the article opens in the reader', (await page.locator('.reader-body').innerText()).includes(BODY_TOKEN))
 
   console.log('\nPhone layout (drill-down navigation)')
   const mp = await context.newPage()
