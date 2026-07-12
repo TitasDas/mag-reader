@@ -4,6 +4,10 @@
 
 Readstand pulls the RSS and Atom feeds of the publications you actually care about into a single, fast, distraction-free reader. It runs as a Chrome extension, an installable web app for your phone, and a native Linux desktop app, all from the same code. Everything is stored locally. No account, no tracking, no one deciding what you see.
 
+![Read, highlight, note, and export, in a few seconds](screenshots/demo.gif)
+
+*Read, highlight a line, jot what you learned, export to Markdown. That is the whole loop.*
+
 ![Readstand, light theme](screenshots/desktop-light.png)
 
 ![Readstand, dark theme](screenshots/desktop-dark.png)
@@ -46,7 +50,25 @@ Select any sentence to save it as a highlight. Jot a quick **Learned** or **To r
 ![Notes and highlights, with Markdown export](screenshots/notes-dark.png)
 
 ### Add anything, even sites that hide their feed
-Paste a blog homepage, a specific post, or a raw feed URL. Readstand auto-discovers the feed. For big publishers whose article pages hide their feed on another host (New York Times, The Guardian, Washington Post, BBC, The Verge, Financial Times, WSJ, The Economist, Bloomberg, Ars Technica, Medium), it knows the pattern and subscribes you to the right section. If there is genuinely no feed, it will still let you read that one article, and offer to report the miss.
+Paste a blog homepage, a specific post, or a raw feed URL. Readstand auto-discovers the feed. For big publishers whose article pages hide their feed on another host, it knows the pattern and subscribes you to the right section. If there is genuinely no feed, it will still let you read that one article, and offer to report the miss.
+
+Publishers it recognizes out of the box:
+
+| Publisher | What Readstand finds |
+|---|---|
+| New York Times | section feeds on `rss.nytimes.com`, derived from the article |
+| The Guardian | the matching `/<section>/rss` |
+| Washington Post | the homepage feed |
+| BBC | the news RSS feed |
+| The Verge | the site feed |
+| Financial Times | the section feed plus the home feed |
+| Wall Street Journal | the matching section feed on `feeds.a.dj.com` |
+| The Economist | the matching `/<section>/rss.xml` |
+| Bloomberg | the section news feed |
+| Ars Technica | the main feed |
+| Medium | the publication or author feed |
+
+Everything else falls back to standard feed autodiscovery. Miss something? One tap on **Report missing feed** opens a prefilled issue so a pattern can be added.
 
 ### Built for the couch, the commute, and the desk
 Fully responsive. On a phone it becomes a single-pane, tap-to-read experience with a slide-in sources drawer. Install it to your home screen and it runs full screen, offline-capable.
