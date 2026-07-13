@@ -17,6 +17,31 @@ export const isTauri =
   typeof window !== 'undefined' &&
   !!(window.__TAURI_INTERNALS__ || window.__TAURI__)
 
+// Host access is requested at runtime (optional_host_permissions) so the
+// extension installs with a gentle permission prompt instead of the scary
+// "read and change all your data on all websites" warning. Outside the
+// extension there is nothing to grant, so these resolve to "already granted".
+const HOST_ORIGINS = { origins: ['<all_urls>'] }
+
+export async function hasHostAccess() {
+  if (!isExtension || !chrome.permissions) return true
+  try {
+    return await chrome.permissions.contains(HOST_ORIGINS)
+  } catch {
+    return true
+  }
+}
+
+// Must be called from a user gesture (a click).
+export async function requestHostAccess() {
+  if (!isExtension || !chrome.permissions) return true
+  try {
+    return await chrome.permissions.request(HOST_ORIGINS)
+  } catch {
+    return false
+  }
+}
+
 // Open a URL in the user's real browser / default handler. In the extension and
 // web builds a new tab is fine, but inside the Tauri desktop webview a plain
 // target="_blank" or window.open goes nowhere, so we route through the opener

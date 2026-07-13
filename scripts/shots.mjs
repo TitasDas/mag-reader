@@ -10,8 +10,22 @@ import { dirname, resolve } from 'node:path'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
 const OUT = resolve(ROOT, 'screenshots')
+const STORE = resolve(ROOT, 'store')
 const PORT = 4320
 const BASE = `http://localhost:${PORT}/`
+
+// Notes seeded into localStorage for the notes screenshots.
+const seedNotes = () => {
+  const now = Date.now()
+  localStorage.setItem(
+    'notes',
+    JSON.stringify([
+      { id: 'n1', type: 'learned', text: 'Neuronpedia builds open-source interpretability tools for LLMs.', createdAt: now - 3600000, articleTitle: 'The Cells That Keep Time Without a Clock', articleLink: 'https://example.com/1', source: 'Quanta' },
+      { id: 'n2', type: 'todo', text: 'Read about the open-source TransAuto algorithm from Google.', createdAt: now - 7200000, articleTitle: 'The Battery Chemistry Quietly Winning', articleLink: 'https://example.com/2', source: 'MIT Technology Review' },
+      { id: 'n3', type: 'highlight', text: 'The picture that is emerging is stranger and more elegant than anyone expected.', createdAt: now - 9000000, articleTitle: 'How Nature Hides Its Deepest Symmetries', articleLink: 'https://example.com/3', source: 'Quanta' },
+    ])
+  )
+}
 
 const IMG =
   'data:image/svg+xml;utf8,' +
@@ -197,12 +211,51 @@ async function shotMobile(file) {
   await ctx.close()
 }
 
+// Chrome Web Store screenshots must be exactly 1280x800.
+async function storeReader(file) {
+  const ctx = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    deviceScaleFactor: 1,
+    colorScheme: 'light',
+  })
+  await applyRoute(ctx)
+  const page = await ctx.newPage()
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' })
+  await page.locator('.item').first().waitFor({ timeout: 15000 })
+  await page.getByText('How Nature Hides Its Deepest Symmetries').click()
+  await page.locator('.reader-title').waitFor({ timeout: 5000 })
+  await page.waitForTimeout(400)
+  await page.screenshot({ path: resolve(STORE, file) })
+  console.log('wrote store/' + file)
+  await ctx.close()
+}
+async function storeNotes(file) {
+  const ctx = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    deviceScaleFactor: 1,
+    colorScheme: 'dark',
+  })
+  await ctx.addInitScript(seedNotes)
+  await applyRoute(ctx)
+  const page = await ctx.newPage()
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' })
+  await page.locator('.item').first().waitFor({ timeout: 15000 })
+  await page.locator('.sidebar-footer').getByRole('button', { name: /^Notes/ }).click()
+  await page.locator('.notes-modal').waitFor({ timeout: 5000 })
+  await page.waitForTimeout(300)
+  await page.screenshot({ path: resolve(STORE, file) })
+  console.log('wrote store/' + file)
+  await ctx.close()
+}
+
 try {
   await waitForServer()
   await shotReader('light', 'desktop-light.png')
   await shotReader('dark', 'desktop-dark.png')
   await shotNotes('notes-dark.png')
   await shotMobile('mobile-dark.png')
+  await storeReader('screenshot-1-light.png')
+  await storeNotes('screenshot-2-dark.png')
 } finally {
   await browser.close()
   server.kill()

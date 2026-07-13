@@ -3,7 +3,7 @@ import { DEFAULT_FEEDS } from './feeds.js'
 import { fetchFeed } from './rss.js'
 import { fetchReadable, fetchArchived } from './readerMode.js'
 import { discoverFeeds } from './discover.js'
-import { openExternal } from './net.js'
+import { openExternal, isExtension, hasHostAccess, requestHostAccess } from './net.js'
 import { toOpml, parseOpml } from './opml.js'
 import * as store from './storage.js'
 
@@ -72,6 +72,7 @@ export default function App() {
   const [zoom, setZoom] = useState(1) // reader text scale
   const [mobilePane, setMobilePane] = useState('list') // 'list' | 'reader' (phone)
   const [drawerOpen, setDrawerOpen] = useState(false) // sources drawer (tablet/phone)
+  const [hostGranted, setHostGranted] = useState(true) // extension: host access granted?
   const [toast, setToast] = useState(null) // { text, type:'loading'|'ok'|'error' } | null
   const toastTimer = useRef(null)
   // Continue reading: id -> { id, title, link, source, time, pct, at }
@@ -235,9 +236,20 @@ export default function App() {
       } catch {
         /* not in extension context */
       }
-      await loadArticles(feedList)
+      // In the extension, host access is optional and granted at runtime. Only
+      // fetch once we have it; otherwise show the one-tap enable gate.
+      const granted = await hasHostAccess()
+      setHostGranted(granted)
+      if (granted) await loadArticles(feedList)
+      else setLoading(false)
     })()
   }, [loadArticles])
+
+  async function enableFetching() {
+    const ok = await requestHostAccess()
+    setHostGranted(ok)
+    if (ok) loadArticles(feeds)
+  }
 
   // ---- derived list --------------------------------------------------------
   const visible = useMemo(() => {
@@ -921,7 +933,19 @@ export default function App() {
           </button>
         </div>
 
-        {loading && !articles.length ? (
+        {isExtension && !hostGranted ? (
+          <div className="perm-gate">
+            <h3>One quick step</h3>
+            <p>
+              Readstand needs permission to fetch feeds from the web. It only
+              fetches the feeds and articles you choose, and nothing is tracked
+              or sent anywhere.
+            </p>
+            <button className="btn" onClick={enableFetching}>
+              Enable feed fetching
+            </button>
+          </div>
+        ) : loading && !articles.length ? (
           <div className="empty">Loading your magazines...</div>
         ) : !visible.length ? (
           <div className="empty">Nothing here. Try a different filter or add a feed.</div>

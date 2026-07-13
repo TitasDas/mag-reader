@@ -22,5 +22,5 @@
     "service_worker": "background.js"
   },
   "permissions": ["storage", "alarms"],
-  "host_permissions": ["<all_urls>"]
+  "optional_host_permissions": ["<all_urls>"]
 }
