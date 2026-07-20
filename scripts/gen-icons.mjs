@@ -15,15 +15,18 @@ import { existsSync } from 'node:fs'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(__dirname, '..', 'public', 'icons')
 
-// The mark: a "TD" monogram stacked above a bold white "R" on a diagonal orange
-// gradient (Readstand accent) — Titas Das's Readstand. `maskable` fills the
-// whole canvas (no rounded corners) and pulls the monogram into the Android
-// safe zone; the standard icon uses rounded corners.
+// The mark: a bold white "R" on a diagonal orange gradient (Readstand accent),
+// with a bookmark ribbon tucked into the top-right corner: read, and keep your
+// place. `maskable` fills the whole canvas (no rounded corners), centers the R
+// in the Android safe zone, and drops the ribbon (the mask would clip it); the
+// standard icon uses rounded corners.
 const FONT = "Helvetica, Arial, 'Liberation Sans', sans-serif"
 function svg({ maskable }) {
   const radius = maskable ? 0 : 112 // /512  (~22% rounded square)
-  const td = maskable ? { size: 128, y: 182, ls: 3 } : { size: 150, y: 168, ls: 4 }
-  const r = maskable ? { size: 248, y: 330 } : { size: 290, y: 352 }
+  const r = maskable ? { size: 248, y: 266 } : { size: 330, y: 272 }
+  const ribbon = maskable
+    ? ''
+    : `<path d="M352,0 H416 V128 L384,102 L352,128 Z" fill="#ffffff" opacity="0.92"/>`
   return `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
     <defs>
       <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
@@ -32,9 +35,7 @@ function svg({ maskable }) {
       </linearGradient>
     </defs>
     <rect x="0" y="0" width="512" height="512" rx="${radius}" fill="url(#g)"/>
-    <text x="256" y="${td.y}" text-anchor="middle" dominant-baseline="central"
-          font-family="${FONT}" font-weight="700" font-size="${td.size}"
-          letter-spacing="${td.ls}" fill="#ffffff">TD</text>
+    ${ribbon}
     <text x="256" y="${r.y}" text-anchor="middle" dominant-baseline="central"
           font-family="${FONT}" font-weight="700" font-size="${r.size}" fill="#ffffff">R</text>
   </svg>`
