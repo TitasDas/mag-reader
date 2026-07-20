@@ -97,7 +97,15 @@ any third party.
 - `screenshot-1-light.png` (1280x800): store screenshot 1
 - `screenshot-2-dark.png` (1280x800): store screenshot 2
 - `promo-tile-440x280.png` (440x280): small promo tile
+- `promo-marquee-1400x560.png` (1400x560): marquee promo tile
 - Extension icon (128x128) is at `../public/icons/icon128.png`
+- Regenerate both promo tiles with `npm run promo`
+
+## Additional fields
+- **Official URL:** None (requires a Search Console verified domain; the project has no own domain)
+- **Homepage URL:** https://github.com/TitasDas/mag-reader
+- **Support URL:** https://github.com/TitasDas/mag-reader/discussions
+- **Mature content:** off
 
 ## Packaging
 Upload the build as a zip whose root contains `manifest.json`:
