@@ -35,6 +35,10 @@ Load `dist/` at `chrome://extensions` (Developer mode, Load unpacked). Confirm:
 - Reader mode, highlights/notes, and Open original all work.
 
 ## Chrome Web Store
+Status: v0.1.0 submitted 2026-07-20, pending review (non-trader account,
+category Productivity > Education, remote code: no). On approval, add the
+listing URL to the README, the press-kit posts, and this file.
+
 1. Go to https://chrome.google.com/webstore/devconsole and register ($5).
 2. New item. Upload the release asset `readstand-0.1.0.zip` (root contains `manifest.json`).
 3. Listing: paste from `store/listing.md`. Category Productivity. Upload `store/screenshot-1-light.png`, `store/screenshot-2-dark.png`, and `store/promo-tile-440x280.png`.
