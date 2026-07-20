@@ -40,7 +40,7 @@ const html = ({ w, h, s }) => `<!doctype html><html><head><style>
     <div class="circle c2"></div>
     <div class="circle c3"></div>
     <h1>Readstand</h1>
-    <p>Your magazines and blogs,<br>one clean feed.</p>
+    <p>Read what you choose.<br>Keep what you learn.</p>
   </div>
 </body></html>`
 
