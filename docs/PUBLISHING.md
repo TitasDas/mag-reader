@@ -11,7 +11,8 @@ Ready:
 - GitHub Release `v0.1.0` has: `readstand-0.1.0.zip` (extension, gentle-permission manifest), `Readstand_0.1.0_amd64.deb`, `Readstand_0.1.0_amd64.AppImage`.
 - Chrome Web Store listing copy and assets in `store/` (1280x800 screenshots, 440x280 promo tile, `PRIVACY.md`).
 - Firefox build target: `npm run build:firefox` produces `readstand-<version>-firefox.zip` (passes `web-ext lint` with 0 errors).
-- Discussions enabled for feedback.
+- Discussions enabled for feedback, with an in-app Feedback link in the sidebar footer.
+- CI: GitHub Actions runs `npm run build` and `npm run test:e2e` on pushes and PRs.
 
 Blocked on you (accounts, payment, manual submission, review):
 - Registering developer accounts and submitting to each store.
@@ -93,7 +94,5 @@ gh release create v<version> readstand-<version>.zip \
 - Post launch announcements from the private press kit (Show HN, Reddit, Product Hunt, LinkedIn). Update every post with the store link once the extension is live.
 
 ## Nice-to-have refinements (not blockers)
-- CI: a GitHub Actions workflow running `npm run build` and `npm run test:e2e` on pushes and PRs.
-- An in-app Feedback link to Discussions.
 - Keyboard navigation in the reader.
 - Runtime-scoped host permissions per site (currently one `<all_urls>` grant).

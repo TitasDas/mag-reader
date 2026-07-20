@@ -903,6 +903,13 @@ export default function App() {
           <button className="link" onClick={() => fileRef.current?.click()}>
             Import OPML
           </button>
+          <span className="dot">·</span>
+          <button
+            className="link"
+            onClick={() => openExternal('https://github.com/TitasDas/mag-reader/discussions')}
+          >
+            Feedback
+          </button>
           <input
             ref={fileRef}
             type="file"
