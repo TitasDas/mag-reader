@@ -398,9 +398,13 @@ try {
     (await page.getByRole('button', { name: 'Report missing feed' }).count()) >= 1
   )
   await page.getByRole('button', { name: 'Read this article' }).click()
+  // The reader pane may still show BODY_TOKEN content from earlier sections, so
+  // wait for the meta line to show this article's host: that proves the one-off
+  // article itself opened (and readUrlOnce's cleanup, which clears the add-feed
+  // input in the same commit, has run — it must not clobber the next fill).
   await page.waitForFunction(
-    (t) => document.querySelector('.reader-body')?.textContent?.includes(t),
-    BODY_TOKEN,
+    () => document.querySelector('.reader-meta span')?.textContent === 'nofeed.test',
+    undefined,
     { timeout: 15000 }
   )
   check('the article opens in the reader', (await page.locator('.reader-body').innerText()).includes(BODY_TOKEN))

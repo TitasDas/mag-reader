@@ -677,7 +677,12 @@ export default function App() {
     }
     setLinkedById((m) => ({ ...m, [url]: synth }))
     openArticle(synth)
-    setNewFeedUrl('')
+    // Only clear the box if it still holds the URL we just read; the user may
+    // have typed a new one while the fetch was in flight.
+    setNewFeedUrl((v) => {
+      const t = v.trim()
+      return t === url || 'https://' + t === url ? '' : v
+    })
     setAddStatus(null)
     setNoFeedUrl(null)
     setDrawerOpen(false)

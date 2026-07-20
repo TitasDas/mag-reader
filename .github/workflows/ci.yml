@@ -16,5 +16,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
+      # test/headless.mjs launches with channel 'chrome', which uses the
+      # Google Chrome preinstalled on ubuntu-latest runners.
       - run: npm run test:e2e
