@@ -84,6 +84,20 @@ No accounts. No servers. No analytics. Your feeds, your read history, your notes
 
 ---
 
+## Learn while you read
+
+Readstand already ships the pieces of a small learning loop:
+
+- **Highlights** catch the sentences worth keeping, right where you read them.
+- **Learned and To-read notes** record what a piece taught you, and what to chase next, without leaving the article.
+- **Continue reading** keeps half-finished pieces from quietly dying in a tab.
+- **In-article links open inside the reader**, with a Back trail, so you can follow a topic deeper in one sitting.
+- **Markdown export** moves all of it into Obsidian or any notes app, where your practice and deeper study live.
+
+One habit to steal: the **Feynman technique**, named after the physicist Richard Feynman. When you finish an article, explain it in your own words, in plain language, as if teaching someone who has never met the idea. Wherever you stall, or catch yourself hiding behind jargon, you have found the part you do not actually understand yet. Go back to the piece, or queue something more focused on exactly that point, then try the explanation again, simpler. In Readstand terms: finish the article, write a **Learned** note explaining it from memory, and turn every stall into a **To-read**. Reading starts the understanding; explaining is how you finish it.
+
+---
+
 ## Get it running
 
 Readstand runs three ways from one codebase. Pick whichever fits.
@@ -125,6 +139,10 @@ VITE_FEED_PROXY="https://your-proxy.workers.dev/?url=" npm run build
 ## Why it exists
 
 A good magazine is an idea reactor: reading Gizmodo as a kid is what got me tinkering with gadgets (including, once, a robot that chops vegetables). Years later I could never quite explain to a CEO why reading a book in the middle of building trading algorithms was not a waste of work time; it was where half the good ideas came from. But today's reading fights that, with algorithmic feeds, ads, flashy whatnots, half-read tabs, and good ideas you forget by morning. Readstand is the tool I wanted: a quiet, ad-free place with no algorithm and nothing blinking at you, to read on purpose and catch the sparks before they fade.
+
+There is a second, older reason. As a kid I learned an enormous amount from magazines. As an adult I noticed the catch: the reading only turned into real understanding when I followed it up, with practice, and with more focused or technical reading on the same subject. Readstand is me getting back into that habit without paying for a stack of subscriptions, because most of this writing was freely available all along; it just needed better curating.
+
+That is also the roadmap. I needed a tool that aids my learning while I read, not one that just serves articles, and the features Readstand grows next will keep pushing in that direction.
 
 Built by Titas Das. [GitHub](https://github.com/TitasDas) and [LinkedIn](https://www.linkedin.com/in/titas-das/).
 

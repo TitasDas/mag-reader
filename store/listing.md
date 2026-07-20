@@ -23,7 +23,7 @@ Read
 - Unified timeline across every feed you follow, newest first
 - Filter by All, Unread, or Saved, narrow to a single source, and search across everything
 - Reader mode that extracts the clean article from a page, like Firefox or Safari Reader View
-- Archived-snapshot fallback (archive.today) for dead links and soft paywalls
+- Archived-snapshot fallback (archive.today) for dead links and pages that will not load
 - Text-only toggle and adjustable text size for distraction-free reading
 - Continue reading: Readstand remembers how far you got and lets you pick up where you left off
 
@@ -37,6 +37,21 @@ Subscribe to anything
 - Knows the feed patterns for big publishers (New York Times, The Guardian, Financial Times, WSJ, The Economist, Bloomberg, BBC, and more)
 - Auto-refresh badges the toolbar icon with the number of new posts
 - OPML import and export, light and dark themes that follow your system
+
+Why I built this
+As a kid I learned an enormous amount from magazines. As an adult I noticed the
+catch: the reading only turned into real understanding when I followed it up
+with practice and more focused, technical reading on the subject. Readstand is
+how I got back into that habit without paying for a stack of subscriptions,
+because most of this writing is freely available and just needed better
+curating. And because I wanted a tool that aids learning while I read, that is
+the direction its future features will keep taking.
+
+One habit worth stealing: the Feynman technique. When you finish an article,
+explain it in your own words, in plain language, as if teaching someone who has
+never met the idea. Wherever you stall, you have found what you do not really
+understand yet. In Readstand: write a Learned note from memory, and turn every
+stall into a To-read.
 
 Private by design
 Readstand collects nothing, sells nothing, and talks to no server of its own.
