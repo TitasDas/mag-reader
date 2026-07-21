@@ -149,7 +149,21 @@ const seedNotes = () => {
 // Brand tokens shared with scripts/gen-promo.mjs.
 const GRADIENT = 'linear-gradient(135deg, #d2693f 0%, #b34c26 55%, #9c3f1d 100%)'
 
-const slideHtml = ({ title, sub, shot }) => `<!doctype html><html><head><style>
+// Scale from app viewport coordinates (1280x800) to the laptop screen (880x550).
+const K = 880 / 1280
+
+// Spotlight: dim the rest of the screen and ring the highlighted region.
+const highlightHtml = (hl) => {
+  if (!hl) return ''
+  const pad = 8
+  const left = Math.max(0, (hl.x - pad) * K)
+  const top = Math.max(0, (hl.y - pad) * K)
+  const width = Math.min(880 - left, (hl.w + pad * 2) * K)
+  const height = Math.min(550 - top, (hl.h + pad * 2) * K)
+  return `<div class="hl" style="left:${left}px;top:${top}px;width:${width}px;height:${height}px"></div>`
+}
+
+const slideHtml = ({ title, sub, shot, hl }) => `<!doctype html><html><head><style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { width: 1280px; height: 800px; overflow: hidden; }
   .slide {
@@ -166,11 +180,16 @@ const slideHtml = ({ title, sub, shot }) => `<!doctype html><html><head><style>
   .sub { font-size: 21px; line-height: 1.35; opacity: 0.95; margin: 12px auto 0; max-width: 940px; }
   .laptop { margin-top: 26px; }
   .screen {
+    position: relative; overflow: hidden;
     width: 908px; margin: 0 auto;
     border: 14px solid #1d1d1f; border-bottom: none; border-radius: 18px 18px 0 0;
     background: #000; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
   }
   .screen img { display: block; width: 880px; height: 550px; }
+  .hl {
+    position: absolute; border: 3px solid #e8763f; border-radius: 10px;
+    box-shadow: 0 0 0 4000px rgba(18, 11, 7, 0.42), 0 0 22px rgba(232, 118, 63, 0.9);
+  }
   .base {
     position: relative; width: 1080px; height: 22px; margin: 0 auto;
     background: linear-gradient(#3d3d40, #2a2a2c); border-radius: 0 0 14px 14px;
@@ -186,7 +205,7 @@ const slideHtml = ({ title, sub, shot }) => `<!doctype html><html><head><style>
     <div class="brandmark">Readstand</div>
     <div class="caption"><h1>${title}</h1><p class="sub">${sub}</p></div>
     <div class="laptop">
-      <div class="screen"><img src="${shot}"></div>
+      <div class="screen"><img src="${shot}">${highlightHtml(hl)}</div>
       <div class="base"></div>
     </div>
   </div>
@@ -232,6 +251,7 @@ const SLIDES = [
     sub: 'Readstand remembers how far you got in every article you start, and takes you back to the exact spot.',
     theme: 'light',
     seed: seedReading,
+    highlight: ['.continue'],
     async stage(page) {
       await page.getByText('A New Proof Ripples Through Number Theory').click()
       await page.locator('.reader-title').waitFor({ timeout: 5000 })
@@ -243,6 +263,7 @@ const SLIDES = [
     title: 'Paste any site, get its feed',
     sub: 'Readstand knows the feed patterns of the New York Times, The Guardian, FT, WSJ, The Economist, BBC, and more.',
     theme: 'light',
+    highlight: ['.add-feed', '.feed-choices'],
     async stage(page) {
       await page.getByText('The Mathematics of a Murmuration').click()
       await page.locator('.reader-title').waitFor({ timeout: 5000 })
@@ -290,15 +311,37 @@ async function captureApp(slide) {
   await page.locator('.item').first().waitFor({ timeout: 15000 })
   await slide.stage(page)
   await page.waitForTimeout(400)
+  // Measure the highlighted region (union of the selectors) in viewport
+  // coordinates, so the slide can ring the exact feature.
+  let hl = null
+  if (slide.highlight) {
+    const boxes = []
+    for (const sel of slide.highlight) {
+      const b = await page.locator(sel).boundingBox()
+      if (b) boxes.push(b)
+    }
+    if (boxes.length) {
+      const x = Math.min(...boxes.map((b) => b.x))
+      const y = Math.min(...boxes.map((b) => b.y))
+      hl = {
+        x,
+        y,
+        w: Math.max(...boxes.map((b) => b.x + b.width)) - x,
+        h: Math.max(...boxes.map((b) => b.y + b.height)) - y,
+      }
+    } else {
+      throw new Error(`highlight selectors matched nothing for ${slide.file}`)
+    }
+  }
   const buf = await page.screenshot()
   await ctx.close()
-  return buf
+  return { buf, hl }
 }
 
-async function composeSlide(slide, shotBuf) {
+async function composeSlide(slide, { buf, hl }) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
   await page.setContent(
-    slideHtml({ ...slide, shot: `data:image/png;base64,${shotBuf.toString('base64')}` })
+    slideHtml({ ...slide, hl, shot: `data:image/png;base64,${buf.toString('base64')}` })
   )
   // Fail loudly if a caption ever overflows the slide.
   const fits = await page.evaluate(() => {
