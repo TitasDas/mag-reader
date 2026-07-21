@@ -427,6 +427,42 @@ try {
     .catch(() => {})
   check('subscribing to the publisher feed adds a source', (await page.locator('.sidebar .source').count()) > srcBefore)
 
+  console.log('\nKeyboard navigation')
+  // Wait for any in-flight refresh from the previous section to settle, and
+  // clear the source filter that subscribing left behind so the list has
+  // articles from every feed again.
+  await page.locator('.toast').waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {})
+  await page.getByRole('button', { name: 'All sources' }).click()
+  await page.locator('.item .item-title').nth(1).waitFor({ timeout: 15000 })
+  const kbFirst = (await page.locator('.item .item-title').first().innerText()).trim()
+  const kbSecond = (await page.locator('.item .item-title').nth(1).innerText()).trim()
+  await page.keyboard.press('j')
+  await page
+    .waitForFunction((t) => document.querySelector('.reader-title')?.textContent.trim() === t, kbFirst, { timeout: 3000 })
+    .catch(() => {})
+  check('j opens the first article', (await page.locator('.reader-title').innerText()).trim() === kbFirst)
+  await page.keyboard.press('j')
+  await page
+    .waitForFunction((t) => document.querySelector('.reader-title')?.textContent.trim() === t, kbSecond, { timeout: 3000 })
+    .catch(() => {})
+  check('j again moves to the next article', (await page.locator('.reader-title').innerText()).trim() === kbSecond)
+  await page.keyboard.press('k')
+  await page
+    .waitForFunction((t) => document.querySelector('.reader-title')?.textContent.trim() === t, kbFirst, { timeout: 3000 })
+    .catch(() => {})
+  check('k moves back to the previous article', (await page.locator('.reader-title').innerText()).trim() === kbFirst)
+  await page.keyboard.press('s')
+  await page.locator('.item.sel .save.on').waitFor({ timeout: 3000 }).catch(() => {})
+  check('s saves the open article', (await page.locator('.item.sel .save.on').count()) === 1)
+  await page.keyboard.press('s') // toggle back so later sections see the original state
+  await page.keyboard.press('/')
+  check('/ focuses the search box', await page.locator('.search').evaluate((el) => el === document.activeElement))
+  await page.keyboard.type('j')
+  check('typing in search does not navigate', (await page.locator('.reader-title').innerText()).trim() === kbFirst)
+  await page.keyboard.press('Escape')
+  check('Escape blurs the search box', await page.locator('.search').evaluate((el) => el !== document.activeElement))
+  await page.locator('.search').fill('') // clear the query for the sections below
+
   console.log('\nPhone layout (drill-down navigation)')
   const mp = await context.newPage()
   await mp.setViewportSize({ width: 390, height: 844 })

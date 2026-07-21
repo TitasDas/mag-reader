@@ -582,6 +582,64 @@ export default function App() {
     visible.forEach((a) => (next[a.id] = Date.now()))
     persistRead(next)
   }
+
+  // ---- keyboard navigation ---------------------------------------------------
+  // Classic reader shortcuts: j/k move through the article list, v opens the
+  // original, s saves, r toggles reader mode, / focuses search, Escape closes
+  // whatever is on top (popover, composer, modal, drawer) and then backs out of
+  // the reader. Re-registered each render so the handler sees current state.
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const t = e.target
+      const typing =
+        t instanceof HTMLElement &&
+        (t.tagName === 'INPUT' ||
+          t.tagName === 'TEXTAREA' ||
+          t.tagName === 'SELECT' ||
+          t.isContentEditable)
+      if (typing) {
+        if (e.key === 'Escape') t.blur()
+        return
+      }
+      if (e.key === 'Escape') {
+        if (sel) setSel(null)
+        else if (noteDraft) setNoteDraft(null)
+        else if (showNotes) setShowNotes(false)
+        else if (showManage) setShowManage(false)
+        else if (drawerOpen) setDrawerOpen(false)
+        else goBack()
+        return
+      }
+      if (showNotes || showManage) return // modals own the keyboard, except Escape
+      if (e.key === '/') {
+        e.preventDefault()
+        document.querySelector('.search')?.focus()
+        return
+      }
+      if (e.key === 'j' || e.key === 'k') {
+        if (!visible.length) return
+        const idx = visible.findIndex((a) => a.id === selectedId)
+        let nextIdx
+        if (idx === -1) nextIdx = 0
+        else if (e.key === 'j') nextIdx = Math.min(idx + 1, visible.length - 1)
+        else nextIdx = Math.max(idx - 1, 0)
+        const next = visible[nextIdx]
+        if (next.id !== selectedId) openArticle(next)
+        // keep the moving selection visible in the list pane
+        requestAnimationFrame(() =>
+          document.querySelector('.items .item.sel')?.scrollIntoView({ block: 'nearest' })
+        )
+        return
+      }
+      if (!selected) return
+      if (e.key === 'v') openExternal(selected.link)
+      else if (e.key === 's') toggleSaved(selected)
+      else if (e.key === 'r') showInline(selected, 'reader')
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  })
   async function subscribe(candidate) {
     if (feeds.some((f) => f.url === candidate.url)) {
       setFeedChoices(null)

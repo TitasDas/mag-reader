@@ -44,6 +44,7 @@ Every source you follow, merged into a single timeline. Filter by **All / Unread
 - **Archived snapshot** opens the article through archive.today (with mirror fallback), which is also how you slip past a soft paywall.
 - **Text-only toggle** strips images for pure focus, and **A- / A+ zoom** sets your comfortable reading size. Both are remembered.
 - In-article links open inside the reader, with a Back trail, so you can follow a thread without losing your place.
+- **Keyboard friendly:** <kbd>j</kbd>/<kbd>k</kbd> next and previous article, <kbd>v</kbd> open original, <kbd>s</kbd> save, <kbd>r</kbd> reader mode, <kbd>/</kbd> search, <kbd>Esc</kbd> back.
 
 ### Continue reading
 Readstand quietly tracks how far you got in each article. Come back tomorrow and the ones you started but did not finish are waiting in a **Continue reading** list in the sidebar, each with a progress bar. Click one and it drops you exactly where you stopped.

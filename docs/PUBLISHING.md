@@ -98,5 +98,4 @@ gh release create v<version> readstand-<version>.zip \
 - Post launch announcements from the private press kit (Show HN, Reddit, Product Hunt, LinkedIn). Update every post with the store link once the extension is live.
 
 ## Nice-to-have refinements (not blockers)
-- Keyboard navigation in the reader.
 - Runtime-scoped host permissions per site (currently one `<all_urls>` grant).
