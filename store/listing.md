@@ -94,12 +94,17 @@ any third party.
 - Privacy policy URL: https://github.com/TitasDas/mag-reader/blob/master/PRIVACY.md
 
 ## Assets in this folder
-- `screenshot-1-light.png` (1280x800): store screenshot 1
-- `screenshot-2-dark.png` (1280x800): store screenshot 2
+- Screenshot carousel, upload all five in this order (1280x800 each, app on a
+  laptop frame with a feature caption):
+  1. `screenshot-1-feed.png`: the unified feed
+  2. `screenshot-2-reader.png`: the reading experience (dark)
+  3. `screenshot-3-notes.png`: notes, highlights, Markdown export (dark)
+  4. `screenshot-4-continue.png`: continue reading
+  5. `screenshot-5-discover.png`: paste-any-site feed discovery
 - `promo-tile-440x280.png` (440x280): small promo tile
 - `promo-marquee-1400x560.png` (1400x560): marquee promo tile
 - Extension icon (128x128) is at `../public/icons/icon128.png`
-- Regenerate both promo tiles with `npm run promo`
+- Regenerate the screenshots with `npm run store:shots`, the promo tiles with `npm run promo`
 
 ## Additional fields
 - **Official URL:** None (requires a Search Console verified domain; the project has no own domain)

@@ -41,7 +41,7 @@ listing URL to the README, the press-kit posts, and this file.
 
 1. Go to https://chrome.google.com/webstore/devconsole and register ($5).
 2. New item. Upload the release asset `readstand-0.1.0.zip` (root contains `manifest.json`).
-3. Listing: paste from `store/listing.md`. Category Productivity. Upload `store/screenshot-1-light.png`, `store/screenshot-2-dark.png`, and `store/promo-tile-440x280.png`.
+3. Listing: paste from `store/listing.md`. Category Productivity. Upload the five `store/screenshot-*.png` carousel slides (in numbered order) and `store/promo-tile-440x280.png`. Regenerate the slides anytime with `npm run store:shots`.
 4. Privacy tab: single purpose, permission justifications, and data disclosures are all in `store/listing.md`. Privacy policy URL: https://github.com/TitasDas/mag-reader/blob/master/PRIVACY.md
 5. Submit. Review usually takes a few days.
 Note: permissions are `storage`, `alarms`, and `optional_host_permissions` only, so the install warning is minimal by design.

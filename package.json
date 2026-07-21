@@ -13,6 +13,7 @@
     "icons": "node scripts/gen-icons.mjs",
     "promo": "node scripts/gen-promo.mjs",
     "shots": "vite build && node scripts/shots.mjs",
+    "store:shots": "vite build && node scripts/gen-store-shots.mjs",
     "demo": "vite build && node scripts/demo.mjs",
     "test:e2e": "vite build && node test/headless.mjs",
     "tauri": "tauri",
