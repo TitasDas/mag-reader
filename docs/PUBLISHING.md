@@ -35,12 +35,17 @@ Load `dist/` at `chrome://extensions` (Developer mode, Load unpacked). Confirm:
 - Reader mode, highlights/notes, and Open original all work.
 
 ## Chrome Web Store
-Status: v0.1.0 was submitted 2026-07-20 (non-trader account, category
-Productivity > Education, remote code: no). Superseded: cancel that review in
-the dev console (the item page has a Cancel review action), replace the package
-with `readstand-0.1.1.zip` and the two old screenshots with the five
-`store/screenshot-*.png` carousel slides, and resubmit. On approval, add the
-listing URL to the README, the press-kit posts, and this file.
+Status: REJECTED 2026-07-21 for Keyword Spam (violation ref "Yellow Argon"):
+the detailed description enumerated publisher brand names. Fixed 2026-07-22 by
+removing every brand name from `store/listing.md` and from the screenshot
+captions (slide 5 now demos discovery with a fictional magazine). To resubmit:
+in the dev console, upload `readstand-0.1.1.zip` as the package, paste the
+revised detailed description from `store/listing.md`, replace all screenshots
+with the five current `store/screenshot-*.png` slides, and submit. Account
+details: non-trader, category Productivity > Education, remote code: no. Keep
+store copy free of third-party brand names; the README is not store metadata
+and may keep its publisher table. On approval, add the listing URL to the
+README, the press-kit posts, and this file.
 
 1. Go to https://chrome.google.com/webstore/devconsole and register ($5).
 2. New item. Upload the release asset `readstand-<version>.zip` (root contains `manifest.json`).

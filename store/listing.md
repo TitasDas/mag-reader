@@ -22,7 +22,7 @@ what you see. Everything is stored locally on your device.
 Read
 - Unified timeline across every feed you follow, newest first
 - Filter by All, Unread, or Saved, narrow to a single source, and search across everything
-- Reader mode that extracts the clean article from a page, like Firefox or Safari Reader View
+- Reader mode that extracts the clean article from a page, like your browser's built-in reader view
 - Archived-snapshot fallback (archive.today) for dead links and pages that will not load
 - Text-only toggle and adjustable text size for distraction-free reading
 - Continue reading: Readstand remembers how far you got and lets you pick up where you left off
@@ -30,11 +30,11 @@ Read
 Keep what you learn
 - Highlight any sentence to save it
 - Jot quick Learned or To-read notes, linked to the article
-- Export every note and highlight to a Markdown file, ready for Obsidian or any notes app
+- Export every note and highlight to a Markdown file, ready for any notes app
 
 Subscribe to anything
 - Paste a site, a post, or a feed URL and Readstand finds the feed
-- Knows the feed patterns for big publishers (New York Times, The Guardian, Financial Times, WSJ, The Economist, Bloomberg, BBC, and more)
+- Understands the URL patterns large news publishers use, so pasting an article usually finds the matching section feed
 - Auto-refresh badges the toolbar icon with the number of new posts
 - OPML import and export, light and dark themes that follow your system
 

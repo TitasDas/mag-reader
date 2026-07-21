@@ -70,12 +70,11 @@ function rss(source) {
   return `<?xml version="1.0"?><rss version="2.0"><channel><title>${source}</title>${items}</channel></rss>`
 }
 
-// NYT feeds for the discovery slide: real-looking channel titles per section.
-function nytRss(url) {
-  const section = (url.match(/nyt\/([A-Za-z]+)\.xml/) || [])[1] || 'HomePage'
-  const title = section === 'HomePage' ? 'NYT > Top Stories' : `NYT > ${section}`
+// Feeds for the discovery slide: a fictional magazine (no real brand names in
+// store assets; the store rejected the listing once for publisher name-dropping).
+function discoveryRss(title) {
   return `<?xml version="1.0"?><rss version="2.0"><channel><title>${title}</title>
-    <item><title>Placeholder</title><link>https://www.nytimes.com/x</link></item>
+    <item><title>Placeholder</title><link>https://www.orbitalreview.com/x</link></item>
   </channel></rss>`
 }
 
@@ -89,12 +88,16 @@ async function applyRoute(ctx) {
         return ''
       }
     })()
-    // Discovery slide: the NYT article page has no feed link and its path
-    // probes 404, but the section feeds live on rss.nytimes.com.
-    if (host === 'rss.nytimes.com') {
-      return route.fulfill({ contentType: 'application/rss+xml', body: nytRss(url) })
-    }
-    if (host.endsWith('nytimes.com')) {
+    // Discovery slide: the article page advertises no feed, but two of the
+    // common probe paths answer, so the multiple-feeds chooser appears.
+    if (host.endsWith('orbitalreview.com')) {
+      const path = new URL(url).pathname
+      if (path === '/feed') {
+        return route.fulfill({ contentType: 'application/rss+xml', body: discoveryRss('The Orbital Review: All stories') })
+      }
+      if (path === '/rss.xml') {
+        return route.fulfill({ contentType: 'application/rss+xml', body: discoveryRss('The Orbital Review: Essays') })
+      }
       if (/\/feed|\/rss|\/atom|\.xml/.test(url)) {
         return route.fulfill({ status: 404, contentType: 'text/plain', body: 'nope' })
       }
@@ -237,7 +240,7 @@ const SLIDES = [
   {
     file: 'screenshot-3-notes.png',
     title: 'Keep what you learn',
-    sub: 'Highlight sentences, jot Learned and To-read notes, and export everything to Markdown for Obsidian or any notes app.',
+    sub: 'Highlight sentences, jot Learned and To-read notes, and export everything to Markdown for your notes app.',
     theme: 'dark',
     seed: seedNotes,
     async stage(page) {
@@ -261,7 +264,7 @@ const SLIDES = [
   {
     file: 'screenshot-5-discover.png',
     title: 'Paste any site, get its feed',
-    sub: 'Readstand knows the feed patterns of the New York Times, The Guardian, FT, WSJ, The Economist, BBC, and more.',
+    sub: 'Paste an article or a site URL and Readstand discovers the feed, even when the site does not advertise one.',
     theme: 'light',
     highlight: ['.add-feed', '.feed-choices'],
     async stage(page) {
@@ -269,7 +272,7 @@ const SLIDES = [
       await page.locator('.reader-title').waitFor({ timeout: 5000 })
       await page
         .locator('.add-feed input')
-        .fill('https://www.nytimes.com/2026/07/14/technology/small-web-comeback.html')
+        .fill('https://www.orbitalreview.com/2026/07/14/essays/the-slow-web.html')
       await page.locator('.add-feed button[type="submit"]').click()
       await page.locator('.feed-choices').waitFor({ timeout: 15000 })
     },
