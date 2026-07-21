@@ -1,7 +1,7 @@
 {
   "name": "mag-reader",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "license": "AGPL-3.0-only",
   "description": "Readstand: a clean, unified feed of the magazines and blogs you follow, with highlights and notes so you keep what you learn. A minimal RSS/Atom aggregator packaged as a Chrome extension.",

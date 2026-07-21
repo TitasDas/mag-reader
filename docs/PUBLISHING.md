@@ -8,7 +8,7 @@ channel. Marketing copy lives in a private press kit outside this repo, not here
 Ready:
 - Product builds three ways from one codebase: Chrome extension, PWA, native Linux desktop (Tauri).
 - AGPL-3.0 licensed. README is a user-facing landing page with a demo GIF.
-- GitHub Release `v0.1.0` has: `readstand-0.1.0.zip` (extension, gentle-permission manifest), `Readstand_0.1.0_amd64.deb`, `Readstand_0.1.0_amd64.AppImage`.
+- GitHub Release `v0.1.1` has: `readstand-0.1.1.zip` (extension, gentle-permission manifest), `Readstand_0.1.1_amd64.deb`, `Readstand_0.1.1_amd64.AppImage`.
 - Chrome Web Store listing copy and assets in `store/` (1280x800 screenshots, 440x280 promo tile, `PRIVACY.md`).
 - Firefox build target: `npm run build:firefox` produces `readstand-<version>-firefox.zip` (passes `web-ext lint` with 0 errors).
 - Discussions enabled for feedback, with an in-app Feedback link in the sidebar footer.
@@ -35,19 +35,22 @@ Load `dist/` at `chrome://extensions` (Developer mode, Load unpacked). Confirm:
 - Reader mode, highlights/notes, and Open original all work.
 
 ## Chrome Web Store
-Status: v0.1.0 submitted 2026-07-20, pending review (non-trader account,
-category Productivity > Education, remote code: no). On approval, add the
+Status: v0.1.0 was submitted 2026-07-20 (non-trader account, category
+Productivity > Education, remote code: no). Superseded: cancel that review in
+the dev console (the item page has a Cancel review action), replace the package
+with `readstand-0.1.1.zip` and the two old screenshots with the five
+`store/screenshot-*.png` carousel slides, and resubmit. On approval, add the
 listing URL to the README, the press-kit posts, and this file.
 
 1. Go to https://chrome.google.com/webstore/devconsole and register ($5).
-2. New item. Upload the release asset `readstand-0.1.0.zip` (root contains `manifest.json`).
+2. New item. Upload the release asset `readstand-<version>.zip` (root contains `manifest.json`).
 3. Listing: paste from `store/listing.md`. Category Productivity. Upload the five `store/screenshot-*.png` carousel slides (in numbered order) and `store/promo-tile-440x280.png`. Regenerate the slides anytime with `npm run store:shots`.
 4. Privacy tab: single purpose, permission justifications, and data disclosures are all in `store/listing.md`. Privacy policy URL: https://github.com/TitasDas/mag-reader/blob/master/PRIVACY.md
 5. Submit. Review usually takes a few days.
 Note: permissions are `storage`, `alarms`, and `optional_host_permissions` only, so the install warning is minimal by design.
 
 ## Microsoft Edge Add-ons
-Same `readstand-0.1.0.zip`. Register (free) at https://partner.microsoft.com/dashboard/microsoftedge, create an extension, reuse the same listing copy and assets.
+Same `readstand-<version>.zip`. Register (free) at https://partner.microsoft.com/dashboard/microsoftedge, create an extension, reuse the same listing copy and assets.
 
 ## Firefox (AMO)
 1. Build: `npm run build:firefox` (produces `readstand-<version>-firefox.zip`, a Firefox MV3 package with an event-page background and a gecko id).
