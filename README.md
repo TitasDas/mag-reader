@@ -2,9 +2,14 @@
 
 **Read the magazines and blogs you follow on purpose, and keep what you learn.**
 
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/bggncidfalfcdjalkidneaoccggnilne?label=Chrome%20Web%20Store&color=b5451c)](https://chromewebstore.google.com/detail/readstand/bggncidfalfcdjalkidneaoccggnilne)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-b5451c.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/TitasDas/mag-reader?color=b5451c)](https://github.com/TitasDas/mag-reader/releases)
 [![Discussions](https://img.shields.io/badge/feedback-Discussions-b5451c.svg)](https://github.com/TitasDas/mag-reader/discussions)
+
+### [Install Readstand from the Chrome Web Store](https://chromewebstore.google.com/detail/readstand/bggncidfalfcdjalkidneaoccggnilne)
+
+One click, no build step. Prefer to run it yourself? See [Get it running](#get-it-running) below.
 
 A calm, private reader for the RSS and Atom feeds you choose. No algorithm deciding what you see, no ads, no tracking. Read in a clean pane, highlight the good bits, note what you learned, and export it all to Markdown. It runs as a Chrome extension, an installable web app for your phone and tablet, and a native Linux desktop app, all from the same code, all stored locally on your device.
 
@@ -104,6 +109,13 @@ One habit to steal: the **Feynman technique**, named after the physicist Richard
 Readstand runs three ways from one codebase. Pick whichever fits.
 
 ### Chrome extension (fastest)
+The easiest way in is the Chrome Web Store, one click, no build step:
+
+**[Install Readstand from the Chrome Web Store](https://chromewebstore.google.com/detail/readstand/bggncidfalfcdjalkidneaoccggnilne)**
+
+It also works in any Chromium browser (Edge, Brave, Arc). Once installed, click the Readstand icon to open it.
+
+Prefer to build it yourself, or want the latest unreleased code? Load it unpacked:
 ```bash
 git clone https://github.com/TitasDas/mag-reader
 cd mag-reader
