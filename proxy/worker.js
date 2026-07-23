@@ -22,7 +22,10 @@
 //
 // Configure by binding these as environment variables on the Worker:
 //   ALLOWED_ORIGIN  e.g. "https://readstand.example.com" (locks CORS + Origin check)
-//   PROXY_SECRET    e.g. a random string, then call with &secret=<value>
+//   PROXY_SECRET    a random string; callers pass &secret=<value>. Only meaningful
+//                   for a private client: a public PWA inlines its proxy URL into
+//                   the bundle, so an embedded secret is readable by anyone. For a
+//                   public deployment, rely on ALLOWED_ORIGIN + rate limiting.
 function corsHeaders(env) {
   return {
     'Access-Control-Allow-Origin': (env && env.ALLOWED_ORIGIN) || '*',

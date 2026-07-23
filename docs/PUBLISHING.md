@@ -103,13 +103,18 @@ The frontend is already responsive and Tauri v2 targets mobile from the same pro
 On Tauri mobile, feeds fetch natively (the HTTP plugin), so no proxy is needed, same as desktop.
 
 ## PWA hosting (to actually reach phones/tablets)
-1. Deploy the CORS proxy in `proxy/worker.js` (Cloudflare Worker). It already refuses requests to loopback/private/link-local hosts (SSRF-safe) and re-checks each redirect hop. Before public use, also bind two Worker env vars to stop open-relay abuse: `ALLOWED_ORIGIN` (your app's URL, which locks CORS and the Origin check) and `PROXY_SECRET` (a random string; then build with `...?url=` plus `&secret=<value>`). Left unset it stays open, which is fine only for private/personal use.
-2. Build pointing at it and host `dist/` over HTTPS:
+1. Deploy the CORS proxy in `proxy/worker.js` (Cloudflare Worker). It refuses loopback/private/link-local and encoded-IP hosts and re-checks every redirect hop, so it can't be pointed at internal addresses.
+2. Stop open-relay abuse before hosting publicly. Two things to know first: the app appends the encoded target to `VITE_FEED_PROXY`, so any extra query params must come *before* the `url=`; and anything baked into the bundle is publicly readable.
+   - `ALLOWED_ORIGIN` = your app's URL. With browser CORS this blocks casual cross-site use, and requests without a matching Origin are rejected. This is the main lever for a public PWA.
+   - Rate limiting: add a Cloudflare rate-limit rule (or a KV / Durable Object counter) so the worker can't be hammered as a free relay. Readstand fetches whatever feed a user adds, so a fixed host allowlist doesn't fit; rate limiting is the practical cap.
+   - `PROXY_SECRET` only protects a *private* client. A public PWA inlines `VITE_FEED_PROXY` into the JS bundle, so the secret is trivially extractable and gives no real protection there. If you do use it (self-host / private build), the secret must come before the appended url:
+     `VITE_FEED_PROXY="https://your-proxy.workers.dev/?secret=<value>&url="`
+3. Build pointing at it and host `dist/` over HTTPS:
 ```bash
 VITE_FEED_PROXY="https://your-proxy.workers.dev/?url=" npm run build
 # deploy dist/ to Cloudflare Pages, Netlify, Vercel, or GitHub Pages
 ```
-3. Share the URL. Users Add to Home Screen. Feed discovery is weaker via a proxy, so pasting a direct feed URL is the surest path there.
+4. Share the URL. Users Add to Home Screen. Feed discovery is weaker via a proxy, so pasting a direct feed URL is the surest path there.
 
 ## Cutting a new release
 Bump the version in all four places so builds agree:
