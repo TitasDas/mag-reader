@@ -73,10 +73,13 @@ export default {
       return new Response('method not allowed', { status: 405, headers: CORS })
     }
 
-    // Optional caller restrictions.
+    // Optional caller restrictions. Note an Origin header is only a soft gate: a
+    // non-browser client can forge or omit it, so PROXY_SECRET is the real lock.
+    // Still, when ALLOWED_ORIGIN is set we require the header to be present and
+    // match, otherwise "just drop the Origin header" would reopen the relay.
     if (env && env.ALLOWED_ORIGIN) {
       const origin = request.headers.get('Origin')
-      if (origin && origin !== env.ALLOWED_ORIGIN) {
+      if (origin !== env.ALLOWED_ORIGIN) {
         return new Response('forbidden origin', { status: 403, headers: CORS })
       }
     }
