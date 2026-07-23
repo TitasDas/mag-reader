@@ -1,7 +1,7 @@
 {
   "name": "mag-reader",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "license": "AGPL-3.0-only",
   "description": "Readstand: a clean, unified feed of the magazines and blogs you follow, with highlights and notes so you keep what you learn. A minimal RSS/Atom aggregator packaged as a Chrome extension.",
@@ -21,10 +21,11 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
-    "@mozilla/readability": "^0.5.0",
+    "@mozilla/readability": "^0.6.0",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-http": "^2.5.9",
     "@tauri-apps/plugin-opener": "^2.5.4",
+    "dompurify": "^3.4.12",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

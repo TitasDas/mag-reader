@@ -5,6 +5,7 @@ import { fetchReadable, fetchArchived } from './readerMode.js'
 import { discoverFeeds } from './discover.js'
 import { openExternal, isExtension, hasHostAccess, requestHostAccess } from './net.js'
 import { toOpml, parseOpml } from './opml.js'
+import { sanitizeHtml } from './sanitize.js'
 import * as store from './storage.js'
 
 const FILTERS = [
@@ -295,12 +296,16 @@ export default function App() {
   const readerErr = selEnh.reader?.status === 'error' ? selEnh.reader.error : null
   const archiveErr = selEnh.archive?.status === 'error' ? selEnh.archive.error : null
   const inlineLoading = selMode !== 'feed' && selEnh[selMode]?.status === 'loading'
-  const bodyHtml =
+  // Everything below is already sanitized at its source (feed parse / reader
+  // mode), but this is the one place untrusted HTML reaches the DOM, so sanitize
+  // again here as the guaranteed choke point. Idempotent, so it is cheap.
+  const bodyHtml = sanitizeHtml(
     (selMode !== 'feed' && selEnh[selMode]?.status === 'done' && selEnh[selMode].html) ||
-    (selected && selected.content) ||
-    (inlineLoading
-      ? '<p class="reader-loading">Loading the linked article...</p>'
-      : '<p>(No text in this feed. Try Reader mode or open the original.)</p>')
+      (selected && selected.content) ||
+      (inlineLoading
+        ? '<p class="reader-loading">Loading the linked article...</p>'
+        : '<p>(No text in this feed. Try Reader mode or open the original.)</p>'),
+  )
 
   // Restore scroll position when an article (or its content) changes, so you
   // resume where you left off. Runs on article/content change only, not on every
