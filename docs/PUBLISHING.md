@@ -34,25 +34,52 @@ Load `dist/` at `chrome://extensions` (Developer mode, Load unpacked). Confirm:
 - The "Enable feed fetching" gate appears on first use, and feeds load after you click it.
 - Reader mode, highlights/notes, and Open original all work.
 
-## Chrome Web Store
-Status: REJECTED 2026-07-21 for Keyword Spam (violation ref "Yellow Argon"):
-the detailed description enumerated publisher brand names. Fixed 2026-07-22 by
-removing every brand name from `store/listing.md` and from the screenshot
-captions (slide 5 now demos discovery with a fictional magazine). To resubmit:
-in the dev console, upload `readstand-0.1.1.zip` as the package, paste the
-revised detailed description from `store/listing.md`, replace all screenshots
-with the five current `store/screenshot-*.png` slides, and submit. Account
-details: non-trader, category Productivity > Education, remote code: no. Keep
-store copy free of third-party brand names; the README is not store metadata
-and may keep its publisher table. On approval, add the listing URL to the
-README, the press-kit posts, and this file.
+When releasing the desktop binaries, also run `npm run tauri:dev` once and confirm
+feeds, images, and reader mode render. The app ships a strict Content-Security-Policy
+(`src-tauri/tauri.conf.json`), so this catches any CSP regression that would blank
+the webview or block article images. Untrusted feed and article HTML is sanitized
+(`src/sanitize.js`) before it is rendered; the e2e suite has a regression check for it.
 
+## Chrome Web Store
+Status: PUBLISHED 2026-07-23. Live listing:
+https://chromewebstore.google.com/detail/readstand/bggncidfalfcdjalkidneaoccggnilne
+(extension id `bggncidfalfcdjalkidneaoccggnilne`). Approved as a non-trader,
+category Productivity > Education, remote code: no. History: rejected 2026-07-21
+for Keyword Spam (ref "Yellow Argon") over publisher brand names in the
+description; fixed by scrubbing all brand names from `store/listing.md` and the
+screenshot captions, then resubmitted and approved. Keep store copy free of
+third-party brand names on every future update; the README is not store metadata
+and may keep its publisher table.
+
+### First-time submission (already done, kept for reference)
 1. Go to https://chrome.google.com/webstore/devconsole and register ($5).
 2. New item. Upload the release asset `readstand-<version>.zip` (root contains `manifest.json`).
 3. Listing: paste from `store/listing.md`. Category Productivity. Upload the five `store/screenshot-*.png` carousel slides (in numbered order) and `store/promo-tile-440x280.png`. Regenerate the slides anytime with `npm run store:shots`.
 4. Privacy tab: single purpose, permission justifications, and data disclosures are all in `store/listing.md`. Privacy policy URL: https://github.com/TitasDas/mag-reader/blob/master/PRIVACY.md
 5. Submit. Review usually takes a few days.
 Note: permissions are `storage`, `alarms`, and `optional_host_permissions` only, so the install warning is minimal by design.
+
+### Shipping an update to the published extension (feature releases and fixes)
+Once the item is live, you do not create a new listing; you publish a new
+version of the same one. Existing users then auto-update, usually within a few
+hours to a day of approval. The flow:
+1. Bump the version in all four files (see "Cutting a new release" below). The
+   store rejects an upload whose `manifest.json` version is not strictly higher
+   than the live one, so the bump is mandatory for every update.
+2. Build and zip: `npm run build && (cd dist && zip -qr ../readstand-<version>.zip .)`.
+3. In the developer dashboard, open the Readstand item, go to the Package tab,
+   and upload the new zip over the old package.
+4. Only touch the Store listing / Privacy tabs if the description, screenshots,
+   or permissions actually changed. A code-only release (like a security fix)
+   leaves them as-is.
+5. Submit for review. Every update is re-reviewed, and adding a new permission or
+   changing the single purpose can lengthen it. This release adds no permissions,
+   so it should be quick.
+6. Publishing is staged: you can roll out to a percentage of users first, then to
+   everyone. There is no separate "beta" unless you set up a second draft.
+
+Do the same single upload for Edge and Firefox (below); each store reviews its
+own copy independently, so a version can be live on one before another.
 
 ## Microsoft Edge Add-ons
 Same `readstand-<version>.zip`. Register (free) at https://partner.microsoft.com/dashboard/microsoftedge, create an extension, reuse the same listing copy and assets.
@@ -76,13 +103,18 @@ The frontend is already responsive and Tauri v2 targets mobile from the same pro
 On Tauri mobile, feeds fetch natively (the HTTP plugin), so no proxy is needed, same as desktop.
 
 ## PWA hosting (to actually reach phones/tablets)
-1. Deploy the CORS proxy in `proxy/worker.js` (Cloudflare Worker). Lock it down before public use: restrict the allowed origin to your app domain and/or require a token. As written it is an open proxy.
-2. Build pointing at it and host `dist/` over HTTPS:
+1. Deploy the CORS proxy in `proxy/worker.js` (Cloudflare Worker). It refuses loopback/private/link-local and encoded-IP hosts and re-checks every redirect hop, so it can't be pointed at internal addresses.
+2. Stop open-relay abuse before hosting publicly. Two things to know first: the app appends the encoded target to `VITE_FEED_PROXY`, so any extra query params must come *before* the `url=`; and anything baked into the bundle is publicly readable.
+   - `ALLOWED_ORIGIN` = your app's URL. With browser CORS this blocks casual cross-site use, and requests without a matching Origin are rejected. This is the main lever for a public PWA.
+   - Rate limiting: add a Cloudflare rate-limit rule (or a KV / Durable Object counter) so the worker can't be hammered as a free relay. Readstand fetches whatever feed a user adds, so a fixed host allowlist doesn't fit; rate limiting is the practical cap.
+   - `PROXY_SECRET` only protects a *private* client. A public PWA inlines `VITE_FEED_PROXY` into the JS bundle, so the secret is trivially extractable and gives no real protection there. If you do use it (self-host / private build), the secret must come before the appended url:
+     `VITE_FEED_PROXY="https://your-proxy.workers.dev/?secret=<value>&url="`
+3. Build pointing at it and host `dist/` over HTTPS:
 ```bash
 VITE_FEED_PROXY="https://your-proxy.workers.dev/?url=" npm run build
 # deploy dist/ to Cloudflare Pages, Netlify, Vercel, or GitHub Pages
 ```
-3. Share the URL. Users Add to Home Screen. Feed discovery is weaker via a proxy, so pasting a direct feed URL is the surest path there.
+4. Share the URL. Users Add to Home Screen. Feed discovery is weaker via a proxy, so pasting a direct feed URL is the surest path there.
 
 ## Cutting a new release
 Bump the version in all four places so builds agree:

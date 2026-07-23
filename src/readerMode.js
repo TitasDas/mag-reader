@@ -1,5 +1,6 @@
 import { Readability } from '@mozilla/readability'
 import { feedFetch } from './net.js'
+import { sanitizeHtml } from './sanitize.js'
 
 const FETCH_TIMEOUT_MS = 15000
 
@@ -20,7 +21,9 @@ function absolute(href, baseUrl) {
 // click navigates the whole reader tab away and loses the app).
 function cleanContent(html, baseUrl) {
   const holder = document.createElement('div')
-  holder.innerHTML = html
+  // Sanitize before assigning innerHTML: even on a detached node, an unsanitized
+  // <img onerror=...> can fire and run code. Scrub first, then post-process.
+  holder.innerHTML = sanitizeHtml(html)
 
   holder.querySelectorAll('img').forEach((img) => {
     // Many sites ship a placeholder src and keep the real URL in a data-*

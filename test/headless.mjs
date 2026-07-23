@@ -46,7 +46,7 @@ function feedXml(host) {
       <title>Headline from ${host}</title>
       <link>${link}</link>
       <pubDate>Wed, 09 Jul 2025 10:00:00 GMT</pubDate>
-      <description><![CDATA[<p>Feed summary body.</p><img src="https://example.com/pic-${host}.jpg" alt="feed image"/>]]></description>
+      <description><![CDATA[<p>Feed summary body.</p><img src="https://example.com/pic-${host}.jpg" alt="feed image"/><img src=x onerror="window.__xssFeed=1"><script>window.__xssFeedScript=1</script><a href="javascript:void(window.__xssJs=1)">x</a>]]></description>
     </item>
   </channel></rss>`
 }
@@ -166,6 +166,22 @@ try {
   await page.locator('.reader article .reader-title').waitFor({ timeout: 5000 })
   check('reader pane shows a title', await page.locator('.reader-title').isVisible())
   check('feed image present', (await page.locator('.reader-body img').count()) >= 1)
+
+  console.log('\nUntrusted feed HTML is sanitized (XSS neutralized)')
+  // The feed body above carries an onerror handler, a <script>, and a javascript:
+  // link. Give any handler time to fire, then confirm none ran and the markup was
+  // stripped. A regression here (unsanitized injection) would set these flags.
+  await page.waitForTimeout(400)
+  const xss = await page.evaluate(() => ({
+    err: window.__xssFeed,
+    script: window.__xssFeedScript,
+    js: window.__xssJs,
+  }))
+  check('inline onerror handler did not execute', xss.err === undefined)
+  check('feed <script> did not execute', xss.script === undefined)
+  check('onerror attribute stripped from feed body', (await page.locator('.reader-body [onerror]').count()) === 0)
+  check('script element stripped from feed body', (await page.locator('.reader-body script').count()) === 0)
+  check('javascript: link neutralized', (await page.locator('.reader-body a[href^="javascript:"]').count()) === 0)
 
   console.log('\nText-only toggle')
   const textBtn = page.getByRole('button', { name: 'Text only' })

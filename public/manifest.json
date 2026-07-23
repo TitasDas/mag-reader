@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Readstand",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A clean, unified feed of the magazines and blogs you follow. Highlight, note, and keep what you learn.",
   "action": {
     "default_title": "Open Readstand",
