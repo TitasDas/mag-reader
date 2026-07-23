@@ -39,8 +39,16 @@ function isBlockedHost(hostname) {
   if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h === '0.0.0.0') {
     return true
   }
-  // IPv6 loopback and link-local / unique-local.
-  if (h === '::1' || h.startsWith('fe80:') || h.startsWith('fc') || h.startsWith('fd')) {
+  // IPv6 loopback and link-local / unique-local. Gate on a colon so real domains
+  // like fc2.com or fdroid.org (which just start with those letters) aren't caught.
+  if (h.includes(':')) {
+    if (h === '::1' || h.startsWith('fe80:') || h.startsWith('fc') || h.startsWith('fd')) {
+      return true
+    }
+  }
+  // Dotless bare integers / hex are alternate encodings of an IP (2130706433 and
+  // 0x7f000001 both mean 127.0.0.1). No real feed host looks like that, so block.
+  if (/^(0x[0-9a-f]+|\d+)$/.test(h)) {
     return true
   }
   const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
