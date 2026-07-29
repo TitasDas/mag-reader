@@ -151,11 +151,7 @@ VITE_FEED_PROXY="https://your-proxy.workers.dev/?url=" npm run build
 
 ## Why it exists
 
-A good magazine is an idea reactor: reading Gizmodo as a kid is what got me tinkering with gadgets (including, once, a robot that chops vegetables). Years later I could never quite explain to a CEO why reading a book in the middle of building trading algorithms was not a waste of work time; it was where half the good ideas came from. But today's reading fights that, with algorithmic feeds, ads, flashy whatnots, half-read tabs, and good ideas you forget by morning. Readstand is the tool I wanted: a quiet, ad-free place with no algorithm and nothing blinking at you, to read on purpose and catch the sparks before they fade.
-
-There is a second, older reason. As a kid I learned an enormous amount from magazines. As an adult I noticed the catch: the reading only turned into real understanding when I followed it up, with practice, and with more focused or technical reading on the same subject. Readstand is me getting back into that habit without paying for a stack of subscriptions, because most of this writing was freely available all along; it just needed better curating.
-
-That is also the roadmap. I needed a tool that aids my learning while I read, not one that just serves articles, and the features Readstand grows next will keep pushing in that direction.
+A good magazine is an idea reactor: reading Gizmodo as a kid is what got me tinkering with gadgets (once imagined a portable air conditioning or body cooling gadget that sits on your wrist and set off to make it a reality). Years later I could never quite explain to a CEO why reading a book in the middle of building trading algorithms was not a waste of work time; it was where half the good ideas came from. But today's reading fights way more than all of that - it fights instant gratification. With algorithmic feeds, ads, flashy whatnots, half-read tabs, and good ideas you forget by morning, I hope Readstand ends up serving the same purpose that it serves for me: a quiet, ad free place with nothing blinking at you that allows you to read intentionally and catch ideas before they fade.
 
 Built by Titas Das. [GitHub](https://github.com/TitasDas) and [LinkedIn](https://www.linkedin.com/in/titas-das/).
 
