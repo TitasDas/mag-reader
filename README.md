@@ -9,9 +9,9 @@
 
 ### [Install Readstand from the Chrome Web Store](https://chromewebstore.google.com/detail/readstand/bggncidfalfcdjalkidneaoccggnilne)
 
-One click, no build step. Prefer to run it yourself? See [Get it running](#get-it-running) below.
+One click and no additional build steps for those who want to run the project themselves. Prefer to run it yourself? See [Get it running](#get-it-running) below.
 
-A calm, private reader for the RSS and Atom feeds you choose. No algorithm deciding what you see, no ads, no tracking. Read in a clean pane, highlight the good bits, note what you learned, and export it all to Markdown. It runs as a Chrome extension, an installable web app for your phone and tablet, and a native Linux desktop app, all from the same code, all stored locally on your device.
+Aimed to be a calm, private reader for the articles and blogs you like to read online. There's no algorithm deciding what you see and no ads. Readstand offers you a clean pane and reading experience. You can highlight while reading, take notes and also get back to where you left off using the progress bar. Open to feedback and suggestions, please use the issues tab here. 
 
 ![Read, highlight, note, and export, in a few seconds](screenshots/demo.gif)
 
@@ -25,7 +25,7 @@ A calm, private reader for the RSS and Atom feeds you choose. No algorithm decid
 
 ## Why bother reading on purpose?
 
-Most of what you read now is chosen by a recommendation engine optimized to keep you scrolling. Readstand flips that: you pick the sources, you get everything they publish, in order, and then you close the tab. That small shift, from feed to reading list, is worth more than it sounds.
+Most of what you read now is chosen by a recommendation engine optimized to keep you scrolling. Readstand flips that: you pick the sources, you get everything they publish, in order, and then you close the tab. Easy hassle free reading experience for the ones who are looking for it. 
 
 The research on long-form reading is genuinely encouraging:
 
