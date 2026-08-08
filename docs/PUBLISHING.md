@@ -32,7 +32,18 @@ npm run build
 ```
 Load `dist/` at `chrome://extensions` (Developer mode, Load unpacked). Confirm:
 - The "Enable feed fetching" gate appears on first use, and feeds load after you click it.
-- Reader mode, highlights/notes, and Open original all work.
+- Opening an article pulls in the full text on its own, with no button pressed.
+- Highlights/notes and Open original all work.
+- With an article page open in another tab, clicking the toolbar icon opens the
+  reader on that article. Do it twice: once with the reader tab closed (fresh
+  mount) and once with it already open (the storage-change path).
+
+`npm run test:ext` automates everything in that last point except the click
+itself, by loading the real MV3 build and driving the background worker's side
+of the handoff. It needs Playwright's own Chromium (`npx playwright install
+chromium`) because stable Chrome no longer honours `--load-extension`, which is
+why it is not in CI. `npm run test:e2e` cannot cover any of this: it drives the
+web build, which has no background worker.
 
 When releasing the desktop binaries, also run `npm run tauri:dev` once and confirm
 feeds, images, and reader mode render. The app ships a strict Content-Security-Policy
@@ -73,8 +84,8 @@ hours to a day of approval. The flow:
    or permissions actually changed. A code-only release (like a security fix)
    leaves them as-is.
 5. Submit for review. Every update is re-reviewed, and adding a new permission or
-   changing the single purpose can lengthen it. This release adds no permissions,
-   so it should be quick.
+   changing the single purpose can lengthen it. Releases so far have added no
+   permissions, so they should be quick.
 6. Publishing is staged: you can roll out to a percentage of users first, then to
    everyone. There is no separate "beta" unless you set up a second draft.
 

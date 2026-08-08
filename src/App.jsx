@@ -3,7 +3,14 @@ import { DEFAULT_FEEDS } from './feeds.js'
 import { fetchFeed } from './rss.js'
 import { fetchReadable, fetchArchived } from './readerMode.js'
 import { discoverFeeds } from './discover.js'
-import { openExternal, isExtension, hasHostAccess, requestHostAccess } from './net.js'
+import {
+  openExternal,
+  isExtension,
+  hasHostAccess,
+  requestHostAccess,
+  takePendingUrl,
+  onPendingUrl,
+} from './net.js'
 import { toOpml, parseOpml } from './opml.js'
 import { sanitizeHtml } from './sanitize.js'
 import * as store from './storage.js'
@@ -19,6 +26,25 @@ const ZOOM_MIN = 0.8
 const ZOOM_MAX = 2
 const ZOOM_STEP = 0.1
 const clampZoom = (z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z * 10) / 10))
+
+// Reader mode runs by itself the moment an article is selected. The short delay
+// means flicking down the list with j/k doesn't fire a fetch for every headline
+// you pass on the way.
+const EXTRACT_DELAY_MS = 250
+// Below this much extracted text the page almost certainly gave us a teaser
+// rather than the piece (a paywall, or a bot block), so we try the public
+// archive before settling for it.
+const TEASER_CHARS = 600
+const textLength = (art) => (art && art.textContent ? art.textContent.trim().length : 0)
+
+// A bare domain is a homepage, not something to open in the reader.
+function looksLikeArticle(url) {
+  try {
+    return new URL(url).pathname.replace(/\/+$/, '').length > 1
+  } catch {
+    return false
+  }
+}
 
 // Cap the reading history so storage doesn't grow without bound; keep the most
 // recently touched entries.
@@ -66,9 +92,8 @@ export default function App() {
   const [noFeedUrl, setNoFeedUrl] = useState(null) // article URL to offer reading once when no feed found
   const [showManage, setShowManage] = useState(false)
   const fileRef = useRef(null)
-  // id -> { reader?: {status,html,error}, archive?: {status,html,error} }
-  const [enhanced, setEnhanced] = useState({})
-  const [viewMode, setViewMode] = useState({}) // id -> 'feed' | 'reader' | 'archive'
+  // id -> { status:'loading'|'done'|'error', html?, error?, via?:'page'|'archive' }
+  const [extracted, setExtracted] = useState({})
   const [showImages, setShowImages] = useState(true)
   const [zoom, setZoom] = useState(1) // reader text scale
   const [mobilePane, setMobilePane] = useState('list') // 'list' | 'reader' (phone)
@@ -241,10 +266,29 @@ export default function App() {
       // fetch once we have it; otherwise show the one-tap enable gate.
       const granted = await hasHostAccess()
       setHostGranted(granted)
-      if (granted) await loadArticles(feedList)
-      else setLoading(false)
+      if (!granted) {
+        setLoading(false)
+        return
+      }
+      // If Readstand was opened from an article page, put that article in the
+      // reader. It loads alongside the feed refresh, so the piece you were
+      // already on is the thing waiting for you.
+      const pending = await takePendingUrl()
+      if (pending) openPageYouWereOn(pending, true)
+      await loadArticles(feedList)
     })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadArticles])
+
+  // The reader tab is usually already open, so clicking the toolbar button just
+  // focuses it: no new mount, and the handoff above never runs. Watch for the
+  // click instead. The ref keeps the listener registered once while still
+  // calling the current render's handler.
+  const openPendingRef = useRef(null)
+  useEffect(() => {
+    openPendingRef.current = openPageYouWereOn
+  })
+  useEffect(() => onPendingUrl((url) => openPendingRef.current?.(url)), [])
 
   async function enableFetching() {
     const ok = await requestHostAccess()
@@ -291,20 +335,22 @@ export default function App() {
   )
 
   // ---- reader view derivation ---------------------------------------------
-  const selEnh = selected ? enhanced[selected.id] || {} : {}
-  const selMode = selected ? viewMode[selected.id] || 'feed' : 'feed'
-  const readerErr = selEnh.reader?.status === 'error' ? selEnh.reader.error : null
-  const archiveErr = selEnh.archive?.status === 'error' ? selEnh.archive.error : null
-  const inlineLoading = selMode !== 'feed' && selEnh[selMode]?.status === 'loading'
+  // The reader always shows the extracted article once it lands. Until then the
+  // feed's own body stands in, so there is something to read immediately rather
+  // than a spinner.
+  const selExt = selected ? extracted[selected.id] || null : null
+  const extracting = selExt?.status === 'loading'
+  const extractFailed = selExt?.status === 'error'
+  const fromArchive = selExt?.status === 'done' && selExt.via === 'archive'
   // Everything below is already sanitized at its source (feed parse / reader
   // mode), but this is the one place untrusted HTML reaches the DOM, so sanitize
   // again here as the guaranteed choke point. Idempotent, so it is cheap.
   const bodyHtml = sanitizeHtml(
-    (selMode !== 'feed' && selEnh[selMode]?.status === 'done' && selEnh[selMode].html) ||
+    (selExt?.status === 'done' && selExt.html) ||
       (selected && selected.content) ||
-      (inlineLoading
-        ? '<p class="reader-loading">Loading the linked article...</p>'
-        : '<p>(No text in this feed. Try Reader mode or open the original.)</p>'),
+      (extracting
+        ? '<p class="reader-loading">Loading the article...</p>'
+        : '<p>(No text for this one. Try opening the original.)</p>'),
   )
 
   // Restore scroll position when an article (or its content) changes, so you
@@ -468,56 +514,54 @@ export default function App() {
     else next[a.id] = Date.now()
     persistSaved(next)
   }
-  // Fetch and show extracted content inline, without leaving the app. `kind` is
-  // 'reader' (the article's own page) or 'archive' (the archive.today snapshot).
-  // Each kind is cached per article, so re-clicking just toggles the view.
-  async function showInline(a, kind) {
-    const label = kind === 'archive' ? 'archived snapshot' : 'reader mode'
-    const cached = enhanced[a.id]?.[kind]
-    // Already fetched: flip between this view and the plain feed view; no re-fetch.
-    if (cached?.status === 'done') {
-      const backToFeed = viewMode[a.id] === kind
-      setViewMode((v) => ({ ...v, [a.id]: backToFeed ? 'feed' : kind }))
-      notify(backToFeed ? 'Back to feed view' : `Showing ${label}`, 'ok')
+  // Pull the readable article out of its own page and show it in place of the
+  // feed's summary. If the page only hands over a teaser, which is what a
+  // paywalled or bot-blocked article does, fall back to the public archive,
+  // which usually holds the whole piece. Cached per article, so this runs once.
+  const loadArticleText = useCallback(async (a) => {
+    if (!a?.link) return
+    setExtracted((e) => ({ ...e, [a.id]: { status: 'loading' } }))
+    let art = null
+    let via = 'page'
+    try {
+      art = await fetchReadable(a.link)
+    } catch {
+      /* nothing extractable from the page itself; the archive is next */
+    }
+    if (textLength(art) < TEASER_CHARS) {
+      try {
+        const snapshot = await fetchArchived(a.link)
+        if (textLength(snapshot) > textLength(art)) {
+          art = snapshot
+          via = 'archive'
+        }
+      } catch {
+        /* no capture either; keep whatever the page gave us */
+      }
+    }
+    if (!art) {
+      setExtracted((e) => ({ ...e, [a.id]: { status: 'error' } }))
       return
     }
-    if (cached?.status === 'loading') return
-    setEnhanced((e) => ({
-      ...e,
-      [a.id]: { ...e[a.id], [kind]: { status: 'loading' } },
-    }))
-    notify(
-      kind === 'archive' ? 'Loading archived snapshot...' : 'Extracting readable article...',
-      'loading'
-    )
-    try {
-      const art =
-        kind === 'archive'
-          ? await fetchArchived(a.link, (host) => notify(`Trying ${host}...`, 'loading'))
-          : await fetchReadable(a.link)
-      setEnhanced((e) => ({
-        ...e,
-        [a.id]: { ...e[a.id], [kind]: { status: 'done', html: art.content } },
-      }))
-      setViewMode((v) => ({ ...v, [a.id]: kind }))
-      // A followed link starts with its raw URL as the title; once extraction
-      // gives us the real headline, show that instead.
-      if (art.title) {
-        setLinkedById((m) => (m[a.id] ? { ...m, [a.id]: { ...m[a.id], title: art.title } } : m))
-      }
-      notify(kind === 'archive' ? 'Archived snapshot loaded' : 'Reader mode ready', 'ok')
-    } catch (err) {
-      const msg = err?.message || 'failed'
-      setEnhanced((e) => ({
-        ...e,
-        [a.id]: { ...e[a.id], [kind]: { status: 'error', error: msg } },
-      }))
-      notify(
-        kind === 'archive' ? `No archived snapshot found` : `Reader mode failed: ${msg}`,
-        'error'
-      )
+    setExtracted((e) => ({ ...e, [a.id]: { status: 'done', html: art.content, via } }))
+    // A followed link starts with its raw URL as the title; once extraction
+    // gives us the real headline, show that instead.
+    if (art.title) {
+      setLinkedById((m) => (m[a.id] ? { ...m, [a.id]: { ...m[a.id], title: art.title } } : m))
     }
-  }
+    return art
+  }, [])
+
+  // Reader mode is the default and only view: selecting an article starts the
+  // extraction. Nothing to click.
+  useEffect(() => {
+    if (!selected?.link) return
+    if (isExtension && !hostGranted) return
+    if (extracted[selected.id]) return // done, in flight, or already tried and failed
+    const article = selected
+    const timer = setTimeout(() => loadArticleText(article), EXTRACT_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [selected, extracted, hostGranted, loadArticleText])
   // Follow an in-article link inside the app: pull the linked page through the
   // same reader-mode extraction and show it in the reader pane, so it reads like
   // any other article instead of navigating away or spawning a browser tab.
@@ -553,13 +597,7 @@ export default function App() {
     setSelectedId(id)
     setMobilePane('reader')
     if (!readIds[id]) persistRead({ ...readIds, [id]: Date.now() })
-    // Show the readable extraction of the linked page (fetch on first visit).
-    const cached = enhanced[id]?.reader
-    if (cached?.status === 'done') {
-      setViewMode((v) => ({ ...v, [id]: 'reader' }))
-    } else if (cached?.status !== 'loading') {
-      showInline({ id, link: url }, 'reader')
-    }
+    // The extraction starts on its own, the same as for any other article.
   }
   // Step back through followed links; once the trail is empty, fall back to the
   // article list (the phone Back button behavior).
@@ -590,9 +628,9 @@ export default function App() {
 
   // ---- keyboard navigation ---------------------------------------------------
   // Classic reader shortcuts: j/k move through the article list, v opens the
-  // original, s saves, r toggles reader mode, / focuses search, Escape closes
-  // whatever is on top (popover, composer, modal, drawer) and then backs out of
-  // the reader. Re-registered each render so the handler sees current state.
+  // original, s saves, / focuses search, Escape closes whatever is on top
+  // (popover, composer, modal, drawer) and then backs out of the reader.
+  // Re-registered each render so the handler sees current state.
   useEffect(() => {
     function onKeyDown(e) {
       if (e.ctrlKey || e.metaKey || e.altKey) return
@@ -640,7 +678,6 @@ export default function App() {
       if (!selected) return
       if (e.key === 'v') openExternal(selected.link)
       else if (e.key === 's') toggleSaved(selected)
-      else if (e.key === 'r') showInline(selected, 'reader')
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -682,13 +719,7 @@ export default function App() {
       // No feed found. If this looks like a specific article (a URL with a path),
       // offer to just read it once instead of dead-ending.
       const norm = /^https?:\/\//i.test(input) ? input : 'https://' + input
-      let hasPath = false
-      try {
-        hasPath = new URL(norm).pathname.replace(/\/+$/, '').length > 1
-      } catch {
-        /* not a URL */
-      }
-      if (hasPath) {
+      if (looksLikeArticle(norm)) {
         setAddStatus({ type: 'error', msg: "No feed found for that site. You can still read this one article." })
         setNoFeedUrl(norm)
       } else {
@@ -697,47 +728,28 @@ export default function App() {
     }
   }
 
-  // Read a single article that has no feed: fetch and extract it, then open it
-  // in the reader as a one-off (not subscribed).
-  async function readUrlOnce(url) {
-    notify('Fetching article...', 'loading')
-    const len = (a) => (a && a.textContent ? a.textContent.trim().length : 0)
-    let art = null
-    try {
-      art = await fetchReadable(url)
-    } catch {
-      /* blocked or unreachable; try the archived snapshot next */
-    }
-    // Paywalled or bot-blocked pages tend to return a short teaser (or nothing).
-    // Fall back to the archived snapshot, which is how we get past paywalls.
-    if (len(art) < 600) {
-      try {
-        notify('Trying archived snapshot...', 'loading')
-        const archived = await fetchArchived(url)
-        if (len(archived) > len(art)) art = archived
-      } catch {
-        /* keep whatever we managed to get */
-      }
-    }
-    if (!art) {
-      notify('Could not fetch that article. Try Open in browser.', 'error')
-      return
-    }
+  // A stand-in article for a URL we are reading as a one-off, not a
+  // subscription. Extraction fills in the real headline.
+  function synthArticle(url) {
     let host = url
     try {
       host = new URL(url).hostname.replace(/^www\./, '')
     } catch {
       /* keep url */
     }
-    const synth = {
-      id: url,
-      title: art.title || host,
-      link: url,
-      source: host,
-      time: Date.now(),
-      content: art.content,
-      preview: '',
+    return { id: url, title: host, link: url, source: host, time: Date.now(), content: '', preview: '' }
+  }
+
+  // Read a single article that has no feed. You asked for this one by URL, so it
+  // opens straight away and the extraction runs behind it as usual.
+  function readUrlOnce(url) {
+    const known = articles.find((a) => a.id === url || a.link === url)
+    if (known) {
+      openArticle(known)
+      setDrawerOpen(false)
+      return
     }
+    const synth = synthArticle(url)
     setLinkedById((m) => ({ ...m, [url]: synth }))
     openArticle(synth)
     // Only clear the box if it still holds the URL we just read; the user may
@@ -751,6 +763,32 @@ export default function App() {
     setDrawerOpen(false)
     dismissToast()
   }
+
+  // The page you were on when you clicked the toolbar icon. Unlike a URL you
+  // typed, this one is a guess: you may have been in an inbox or on a search
+  // page, not a story. So fetch it first and only take over the reader if a real
+  // article comes back, rather than parking a failure where you were reading.
+  // `quiet` is for the first-load case, where the feed refresh owns the status
+  // popup and a second one would just fight it.
+  async function openPageYouWereOn(url, quiet = false) {
+    if (!looksLikeArticle(url)) return
+    const known = articles.find((a) => a.id === url || a.link === url)
+    if (known) {
+      openArticle(known)
+      return
+    }
+    if (!quiet) notify('Loading the page you were on...', 'loading')
+    const synth = synthArticle(url)
+    setLinkedById((m) => ({ ...m, [url]: synth }))
+    const art = await loadArticleText(synth)
+    if (!art) {
+      if (!quiet) notify('Nothing readable on that page', 'error')
+      return
+    }
+    openArticle({ ...synth, title: art.title || synth.title })
+    if (!quiet) dismissToast()
+  }
+
   // Report a site with no discoverable feed so a pattern can be added later.
   // Opens a prefilled issue on the project repo.
   function reportMissingFeed(url) {
@@ -1093,24 +1131,6 @@ export default function App() {
                 Open original ↗
               </button>
               <button
-                className={`btn ghost ${selMode === 'reader' ? 'active' : ''}`}
-                onClick={() => showInline(selected, 'reader')}
-                disabled={selEnh.reader?.status === 'loading'}
-                aria-pressed={selMode === 'reader'}
-                title="Extract the full readable article from the page"
-              >
-                {selEnh.reader?.status === 'loading' ? 'Fetching...' : 'Reader mode'}
-              </button>
-              <button
-                className={`btn ghost ${selMode === 'archive' ? 'active' : ''}`}
-                onClick={() => showInline(selected, 'archive')}
-                disabled={selEnh.archive?.status === 'loading'}
-                aria-pressed={selMode === 'archive'}
-                title="Open the archived snapshot inside the app"
-              >
-                {selEnh.archive?.status === 'loading' ? 'Fetching...' : 'Archived snapshot'}
-              </button>
-              <button
                 className={`btn ghost ${!showImages ? 'active' : ''}`}
                 onClick={toggleImages}
                 aria-pressed={!showImages}
@@ -1192,16 +1212,24 @@ export default function App() {
                 </div>
               </div>
             )}
-            {readerErr && (
-              <div className="reader-note">
-                Reader mode couldn't extract this article ({readerErr}).
-                The page likely doesn't ship its text. Try the archived snapshot or open the original.
+            {extracting && (
+              <div className="reader-status" role="status">
+                <span className="reader-status-spinner" aria-hidden="true" />
+                Loading the full article...
               </div>
             )}
-            {archiveErr && (
+            {fromArchive && (
               <div className="reader-note">
-                No archived snapshot could be loaded ({archiveErr}). There may be no capture of
-                this page yet. Open the original to read or save it to archive.today.
+                The page itself gave up only an excerpt, so this is an archived copy of it.
+              </div>
+            )}
+            {extractFailed && (
+              <div className="reader-note">
+                Couldn't pull the full text of this one, so this is what the feed carries.
+                The page may not ship its text at all.
+                <button className="link" onClick={() => loadArticleText(selected)}>
+                  try again
+                </button>
               </div>
             )}
             <div

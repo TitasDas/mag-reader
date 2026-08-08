@@ -491,7 +491,7 @@ body {
 .btn.ghost:hover:not(:disabled) {
   border-color: var(--accent);
 }
-/* Pressed/active state for the toggle buttons (Reader mode, Text only). */
+/* Pressed/active state for the toggle buttons (Text only, Note). */
 .btn.ghost.active {
   border-color: var(--accent);
   color: var(--accent);
@@ -524,6 +524,30 @@ body {
   min-width: 48px;
   cursor: pointer;
 }
+/* Quiet line under the title while the full article is being pulled in. The
+   feed's own text is readable underneath in the meantime. */
+.reader-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+.reader-status-spinner {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: toast-spin 0.7s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reader-status-spinner {
+    animation-duration: 1.4s;
+  }
+}
 .reader-note {
   background: var(--bg-alt);
   border: 1px solid var(--border);
@@ -533,6 +557,9 @@ body {
   font-size: 13px;
   color: var(--muted);
   margin-bottom: 20px;
+}
+.reader-note .link {
+  margin-left: 6px;
 }
 .reader-body {
   font-size: calc(17px * var(--reader-scale, 1));

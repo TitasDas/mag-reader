@@ -55,6 +55,53 @@ export async function openExternal(url) {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
+// ---- "the page I was on" handoff -------------------------------------------
+// When the toolbar button is clicked, the background worker stashes the URL of
+// the tab you were looking at. The reader picks it up and pulls that article in,
+// so opening Readstand on a paywalled piece lands you on its intro rather than
+// on an unrelated feed. Stale stashes are ignored: only a click from the last
+// minute counts, so an old one can never hijack a later open.
+const PENDING_MAX_AGE_MS = 60000
+
+function freshPending(p) {
+  if (!p || typeof p.url !== 'string' || !/^https?:/i.test(p.url)) return null
+  if (!p.at || Date.now() - p.at > PENDING_MAX_AGE_MS) return null
+  return p.url
+}
+
+// Read and clear the stash. Returns the URL, or null if there is nothing fresh.
+// Callback form, not the promise one: Firefox only promisifies `browser.*`.
+export async function takePendingUrl() {
+  if (!isExtension || !chrome.storage?.local) return null
+  try {
+    return await new Promise((resolve) => {
+      chrome.storage.local.get(['pendingUrl'], (res) => {
+        const url = freshPending(res?.pendingUrl)
+        if (res?.pendingUrl) chrome.storage.local.remove('pendingUrl')
+        resolve(url)
+      })
+    })
+  } catch {
+    return null
+  }
+}
+
+// The reader tab is often already open, in which case clicking the toolbar
+// button just focuses it and no fresh mount happens. Watch the stash so that
+// case behaves the same as opening the reader for the first time.
+export function onPendingUrl(cb) {
+  if (!isExtension || !chrome.storage?.onChanged) return () => {}
+  const handler = (changes, area) => {
+    if (area !== 'local' || !changes.pendingUrl) return
+    const url = freshPending(changes.pendingUrl.newValue)
+    if (!url) return
+    chrome.storage.local.remove('pendingUrl')
+    cb(url)
+  }
+  chrome.storage.onChanged.addListener(handler)
+  return () => chrome.storage.onChanged.removeListener(handler)
+}
+
 export async function feedFetch(url, opts) {
   if (isTauri) {
     // Native HTTP via Rust, bypasses CORS, no proxy required.
