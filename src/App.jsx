@@ -285,8 +285,10 @@ export default function App() {
   // click instead. The ref keeps the listener registered once while still
   // calling the current render's handler.
   const openPendingRef = useRef(null)
+  const selectedIdRef = useRef(null)
   useEffect(() => {
     openPendingRef.current = openPageYouWereOn
+    selectedIdRef.current = selectedId
   })
   useEffect(() => onPendingUrl((url) => openPendingRef.current?.(url)), [])
 
@@ -785,6 +787,10 @@ export default function App() {
       if (!quiet) notify('Nothing readable on that page', 'error')
       return
     }
+    // On first load this fetch races the feeds appearing. If you picked
+    // something to read while it was still going, that wins: you chose it, and
+    // this one only ever came from which tab you happened to be on.
+    if (quiet && selectedIdRef.current) return
     openArticle({ ...synth, title: art.title || synth.title })
     if (!quiet) dismissToast()
   }
