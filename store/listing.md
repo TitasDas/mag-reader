@@ -22,8 +22,9 @@ what you see. Everything is stored locally on your device.
 Read
 - Unified timeline across every feed you follow, newest first
 - Filter by All, Unread, or Saved, narrow to a single source, and search across everything
-- Reader mode that extracts the clean article from a page, like your browser's built-in reader view
-- Archived-snapshot fallback (archive.today) for dead links and pages that will not load
+- Reader mode by default: open an article and the clean, readable version is fetched for you, no button to press
+- Open Readstand from the toolbar while you are on an article page and that article loads in the reader
+- Archived-snapshot fallback for dead links and pages that will not load
 - Text-only toggle and adjustable text size for distraction-free reading
 - Continue reading: Readstand remembers how far you got and lets you pick up where you left off
 
@@ -81,10 +82,13 @@ Readstand fetches feed files and article pages from the sites the user chooses
 to follow. Because the user can subscribe to any publication, the set of hosts
 is not known ahead of time, so access to arbitrary hosts is required. Requests
 are made only to retrieve content the user has subscribed to or explicitly
-opened: fetching feeds, and, when the user asks for it, fetching one article
-page for Reader mode, an archived snapshot, or reading a single article that has
-no feed. No browsing history or page data is collected, and nothing is sent to
-any third party.
+opened: fetching feeds, and fetching one article page to render the article the
+user opened (falling back to an archived copy of that same page if the page
+itself will not render). The same permission lets the extension see the address
+of the tab the user is on at the moment they click the toolbar icon, so that
+article can be opened in the reader; the address is used once and discarded. No
+browsing history or page data is collected, and nothing is sent to any third
+party.
 
 ## Data usage disclosures (Privacy practices tab)
 - Does the item collect user data? No.

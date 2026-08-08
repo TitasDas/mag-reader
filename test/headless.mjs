@@ -31,8 +31,23 @@ function articleHtml() {
       ${para.repeat(6)}
       <img data-src="${LAZY_IMG}" alt="lazy" />
       <p>${para}</p>
+      <img src=x onerror="window.__xssArticle=1">
+      <script>window.__xssArticleScript=1</script>
+      <a href="javascript:void(window.__xssArticleJs=1)">x</a>
       <a href="/relative/link">a relative link</a>
       <a href="https://example.com/article/linked-page">a linked article</a>
+    </article>
+  </body></html>`
+}
+
+// A paywalled piece: the page itself ships only the standfirst, and the whole
+// article exists only in the public archive.
+function teaserHtml() {
+  return `<!doctype html><html><head><title>Paywalled Piece</title></head><body>
+    <article>
+      <h1>Paywalled Piece</h1>
+      <p>The opening paragraph you are allowed to read before the wall comes down.</p>
+      <p>Subscribe to continue reading.</p>
     </article>
   </body></html>`
 }
@@ -46,7 +61,7 @@ function feedXml(host) {
       <title>Headline from ${host}</title>
       <link>${link}</link>
       <pubDate>Wed, 09 Jul 2025 10:00:00 GMT</pubDate>
-      <description><![CDATA[<p>Feed summary body.</p><img src="https://example.com/pic-${host}.jpg" alt="feed image"/>]]></description>
+      <description><![CDATA[<p>Feed summary body.</p><img src="https://example.com/pic-${host}.jpg" alt="feed image"/><img src=x onerror="window.__xssFeed=1"><script>window.__xssFeedScript=1</script><a href="javascript:void(window.__xssJs=1)">x</a>]]></description>
     </item>
   </channel></rss>`
 }
@@ -100,10 +115,27 @@ try {
     } catch {
       /* keep default */
     }
+    // Unreachable everywhere, archive mirrors included (each mirror URL carries
+    // the target URL in its path). Exercises the "nothing extractable" path.
+    if (url.includes('deadlink.test')) {
+      return route.fulfill({ status: 404, contentType: 'text/plain', body: 'gone' })
+    }
     // Simulate the primary archive mirror being down so the fallback chain in
-    // fetchArchived (archive.ph -> archive.today -> ...) gets exercised.
+    // fetchArchived (archive.ph -> archive.today -> ...) gets exercised. Every
+    // other mirror holds the full article.
     if (host === 'archive.ph') {
       return route.fulfill({ status: 503, contentType: 'text/plain', body: 'down' })
+    }
+    if (['archive.today', 'archive.is', 'web.archive.org'].includes(host)) {
+      return route.fulfill({ contentType: 'text/html', body: articleHtml() })
+    }
+    // A paywalled site: no feed, and the page hands over only a teaser, so the
+    // archive fallback is the only way to the piece.
+    if (host === 'paywall.test') {
+      if (/\/feed|\/rss|\/atom|\.xml/.test(url)) {
+        return route.fulfill({ status: 404, contentType: 'text/plain', body: 'nope' })
+      }
+      return route.fulfill({ contentType: 'text/html', body: teaserHtml() })
     }
     // A site with no discoverable feed: the page is plain HTML (no alternate
     // link) and every feed-probe path 404s. Exercises the read-one-article
@@ -161,11 +193,54 @@ try {
   const itemCount = await page.locator('.item').count()
   check(`articles listed (got ${itemCount})`, itemCount >= 1)
 
-  console.log('\nOpen an article')
+  console.log('\nOpen an article (reader mode loads by itself)')
   await page.locator('.item').first().click()
   await page.locator('.reader article .reader-title').waitFor({ timeout: 5000 })
   check('reader pane shows a title', await page.locator('.reader-title').isVisible())
-  check('feed image present', (await page.locator('.reader-body img').count()) >= 1)
+  // Nobody clicked anything: the extracted article arrives on its own, and the
+  // controls that used to gate it are gone for good.
+  await page.waitForFunction(
+    (t) => document.querySelector('.reader-body')?.textContent?.includes(t),
+    BODY_TOKEN,
+    { timeout: 15000 }
+  )
+  check('extracted article loads without a click', (await page.locator('.reader-body').innerText()).includes(BODY_TOKEN))
+  check('no Reader mode button', (await page.getByRole('button', { name: 'Reader mode' }).count()) === 0)
+  check('no Archived snapshot button', (await page.getByRole('button', { name: 'Archived snapshot' }).count()) === 0)
+  check('loading line clears once the article lands', (await page.locator('.reader-status').count()) === 0)
+  check(
+    'lazy image resolved to real src',
+    (await page.locator(`.reader-body img[src="${LAZY_IMG}"]`).count()) >= 1
+  )
+  check(
+    'relative link absolutized',
+    (await page.locator('.reader-body a[href="https://example.com/relative/link"]').count()) >= 1
+  )
+  check('links set target=_blank', (await page.locator('.reader-body a[target="_blank"]').count()) >= 1)
+
+  console.log('\nUntrusted HTML is sanitized (XSS neutralized)')
+  // Both the feed body and the article page carry an onerror handler, a
+  // <script>, and a javascript: link. The feed body renders first and the
+  // extracted body replaces it, so both passed through the DOM by now: if
+  // either went in unsanitized, one of these flags would be set.
+  await page.waitForTimeout(400)
+  const xss = await page.evaluate(() => ({
+    err: window.__xssFeed,
+    script: window.__xssFeedScript,
+    js: window.__xssJs,
+    artErr: window.__xssArticle,
+    artScript: window.__xssArticleScript,
+    artJs: window.__xssArticleJs,
+  }))
+  check('feed onerror handler did not execute', xss.err === undefined)
+  check('feed <script> did not execute', xss.script === undefined)
+  check('feed javascript: link did not execute', xss.js === undefined)
+  check('article onerror handler did not execute', xss.artErr === undefined)
+  check('article <script> did not execute', xss.artScript === undefined)
+  check('article javascript: link did not execute', xss.artJs === undefined)
+  check('onerror attribute stripped', (await page.locator('.reader-body [onerror]').count()) === 0)
+  check('script element stripped', (await page.locator('.reader-body script').count()) === 0)
+  check('javascript: link neutralized', (await page.locator('.reader-body a[href^="javascript:"]').count()) === 0)
 
   console.log('\nText-only toggle')
   const textBtn = page.getByRole('button', { name: 'Text only' })
@@ -180,39 +255,7 @@ try {
   await textBtn.click()
   check('images restored after toggle off', (await page.locator('.reader-body.text-only').count()) === 0)
 
-  console.log('\nReader mode (extraction + lazy image + absolutize + toggle)')
-  const readerBtn = page.getByRole('button', { name: 'Reader mode' })
-  await readerBtn.click()
-  await page.waitForFunction(
-    (t) => document.querySelector('.reader-body')?.textContent?.includes(t),
-    BODY_TOKEN,
-    { timeout: 15000 }
-  )
-  check('extracted body text shown', (await page.locator('.reader-body').innerText()).includes(BODY_TOKEN))
-  check('reader-mode button active', (await readerBtn.getAttribute('aria-pressed')) === 'true')
-  check(
-    'lazy image resolved to real src',
-    (await page.locator(`.reader-body img[src="${LAZY_IMG}"]`).count()) >= 1
-  )
-  check(
-    'relative link absolutized',
-    (await page.locator('.reader-body a[href="https://example.com/relative/link"]').count()) >= 1
-  )
-  check('links set target=_blank', (await page.locator('.reader-body a[target="_blank"]').count()) >= 1)
-
-  await readerBtn.click()
-  check(
-    'reader mode toggles back to feed view',
-    !(await page.locator('.reader-body').innerText()).includes(BODY_TOKEN)
-  )
-
   console.log('\nIn-article link opens inside the app (not a new tab)')
-  await readerBtn.click()
-  await page.waitForFunction(
-    (t) => document.querySelector('.reader-body')?.textContent?.includes(t),
-    BODY_TOKEN,
-    { timeout: 10000 }
-  )
   const tabsBeforeFollow = context.pages().length
   await page.locator('.reader-body a[href="https://example.com/article/linked-page"]').click()
   // The linked page is fetched, extracted, and shown in the same reader pane;
@@ -236,29 +279,6 @@ try {
   )
   check('back returns to the originating article', (await page.locator('.reader-title').innerText()).startsWith('Headline from'))
 
-  // Toggle reader mode back off so we start the next checks from the feed view.
-  if ((await readerBtn.getAttribute('aria-pressed')) === 'true') await readerBtn.click()
-
-  console.log('\nArchived snapshot opens inside the app (with mirror fallback)')
-  const archiveBtn = page.getByRole('button', { name: 'Archived snapshot' })
-  const tabsBefore = context.pages().length
-  await archiveBtn.click()
-  await page.waitForFunction(
-    (t) => document.querySelector('.reader-body')?.textContent?.includes(t),
-    BODY_TOKEN,
-    { timeout: 20000 }
-  )
-  // archive.ph is mocked as 503, so success here proves the fallback mirror served it.
-  check('archived content shown in-app via fallback mirror', (await page.locator('.reader-body').innerText()).includes(BODY_TOKEN))
-  check('archive button active', (await archiveBtn.getAttribute('aria-pressed')) === 'true')
-  check('no new tab was opened for the archive', context.pages().length === tabsBefore)
-  check('reader did not navigate away', page.url() === BASE)
-  await archiveBtn.click()
-  check(
-    'archive toggles back to the feed view',
-    !(await page.locator('.reader-body').innerText()).includes(BODY_TOKEN)
-  )
-
   console.log('\nReader text zoom')
   const fontSize = () =>
     page.locator('.reader-body').evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
@@ -276,10 +296,10 @@ try {
   check('reset restores base size', Math.abs((await fontSize()) - base) < 0.5)
 
   console.log('\nContinue reading tracker')
-  // Open an article and load reader mode so the body is long enough to scroll.
+  // Open an article and wait for the extracted text, so the body is long enough
+  // to scroll.
   await page.locator('.item').first().click()
   await page.locator('.reader-title').waitFor({ timeout: 5000 })
-  await page.getByRole('button', { name: 'Reader mode' }).click()
   await page.waitForFunction(
     (t) => document.querySelector('.reader-body')?.textContent?.includes(t),
     BODY_TOKEN,
@@ -407,7 +427,48 @@ try {
     undefined,
     { timeout: 15000 }
   )
+  await page.waitForFunction(
+    (t) => document.querySelector('.reader-body')?.textContent?.includes(t),
+    BODY_TOKEN,
+    { timeout: 15000 }
+  )
   check('the article opens in the reader', (await page.locator('.reader-body').innerText()).includes(BODY_TOKEN))
+
+  console.log('\nPaywalled article falls back to the archive on its own')
+  // paywall.test serves only a standfirst; the full piece lives in the archive,
+  // and archive.ph is down, so passing this needs both the teaser detection and
+  // the mirror fallback to work with nothing clicked.
+  await page.locator('.add-feed input:not([disabled])').waitFor({ timeout: 15000 })
+  await page.locator('.add-feed input').fill('https://paywall.test/2026/08/01/story.html')
+  await page.locator('.add-feed button[type="submit"]').click()
+  await page.locator('.no-feed').waitFor({ state: 'visible', timeout: 15000 })
+  await page.getByRole('button', { name: 'Read this article' }).click()
+  await page.waitForFunction(
+    () => document.querySelector('.reader-meta span')?.textContent === 'paywall.test',
+    undefined,
+    { timeout: 15000 }
+  )
+  await page.waitForFunction(
+    (t) => document.querySelector('.reader-body')?.textContent?.includes(t),
+    BODY_TOKEN,
+    { timeout: 25000 }
+  )
+  check('teaser is replaced by the archived full text', (await page.locator('.reader-body').innerText()).includes(BODY_TOKEN))
+  check('the reader says where the text came from', (await page.locator('.reader-note').innerText()).includes('archived copy'))
+  check('no new tab was opened for the archive', context.pages().length === 1)
+
+  console.log('\nUnreachable article says so instead of hanging')
+  await page.locator('.add-feed input:not([disabled])').waitFor({ timeout: 15000 })
+  await page.locator('.add-feed input').fill('https://deadlink.test/2026/08/01/gone.html')
+  await page.locator('.add-feed button[type="submit"]').click()
+  await page.locator('.no-feed').waitFor({ state: 'visible', timeout: 15000 })
+  await page.getByRole('button', { name: 'Read this article' }).click()
+  await page.locator('.reader-note').waitFor({ state: 'visible', timeout: 25000 })
+  check('a note explains the extraction failed', await page.locator('.reader-note').isVisible())
+  check(
+    'the note offers a retry',
+    (await page.locator('.reader-note').getByRole('button', { name: 'try again' }).count()) === 1
+  )
 
   console.log('\nPublisher feed patterns (NYT-style)')
   // Let any in-flight refresh from the previous section settle first.

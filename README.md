@@ -45,11 +45,12 @@ Readstand adds one more idea on top: **reading is where your next idea comes fro
 Every source you follow, merged into a single timeline. Filter by **All / Unread / Saved**, jump to any one publication, or search across everything. Full text renders inline where the feed provides it; where it does not, one tap opens the original.
 
 ### A real reading experience
-- **Reader mode** extracts the clean article from the page, like Safari or Firefox Reader View, images and all.
-- **Archived snapshot** opens the article through archive.today (with mirror fallback), which is also how you slip past a soft paywall.
+- **Reader mode is the view.** Open anything and Readstand goes and gets the clean article from the page, like Safari or Firefox Reader View, images and all. There is no button, because there is nothing to switch to.
+- **Soft paywalls.** When a page hands over a teaser instead of the piece, Readstand quietly checks the public archive (archive.today, with mirror fallback) and shows whichever version is actually readable.
+- **Open Readstand on an article and it is already there.** Click the toolbar icon while you are on a story and that story loads in the reader, intro and all, without subscribing to anything.
 - **Text-only toggle** strips images for pure focus, and **A- / A+ zoom** sets your comfortable reading size. Both are remembered.
 - In-article links open inside the reader, with a Back trail, so you can follow a thread without losing your place.
-- **Keyboard friendly:** <kbd>j</kbd>/<kbd>k</kbd> next and previous article, <kbd>v</kbd> open original, <kbd>s</kbd> save, <kbd>r</kbd> reader mode, <kbd>/</kbd> search, <kbd>Esc</kbd> back.
+- **Keyboard friendly:** <kbd>j</kbd>/<kbd>k</kbd> next and previous article, <kbd>v</kbd> open original, <kbd>s</kbd> save, <kbd>/</kbd> search, <kbd>Esc</kbd> back.
 
 ### Continue reading
 Readstand quietly tracks how far you got in each article. Come back tomorrow and the ones you started but did not finish are waiting in a **Continue reading** list in the sidebar, each with a progress bar. Click one and it drops you exactly where you stopped.
@@ -160,9 +161,9 @@ Built by Titas Das. [GitHub](https://github.com/TitasDas) and [LinkedIn](https:/
 ## Notes for the curious
 
 - **Default sources** to get you started: Quanta, Aeon, Nautilus, The Atlantic, The New Yorker, MIT Technology Review, Wired, The Economist. Add or remove any of them in the app.
-- **Paywalls** stand. Readstand does not crack DRM or pull from shadow libraries. For paywalled pieces it gives you the headline and a link, plus the archived-snapshot option, which uses your own right to read.
+- **Paywalls** stand. Readstand does not crack DRM or pull from shadow libraries. For paywalled pieces it shows you whatever the page itself hands over, usually the headline and the intro, then checks the public archive, which uses your own right to read.
 - **Missing a publisher?** If a site has no discoverable feed, use **Report missing feed** in the app to open a prefilled issue, and a pattern can be added.
-- **Develop / test:** `npm run dev` for a live server, `npm run test:e2e` for the headless end-to-end suite, `npm run icons` and `npm run shots` to regenerate the icon set and screenshots.
+- **Develop / test:** `npm run dev` for a live server, `npm run test:e2e` for the headless end-to-end suite, `npm run test:ext` for the extension-only checks (needs `npx playwright install chromium`), `npm run icons` and `npm run shots` to regenerate the icon set and screenshots.
 
 ## License
 

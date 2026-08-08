@@ -18,11 +18,18 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'refresh') checkFeeds()
 })
 
-// Toolbar click: open (or focus) the reader and clear the "new" badge.
-chrome.action.onClicked.addListener(() => {
+// Toolbar click: open (or focus) the reader and clear the "new" badge. We also
+// stash the page you were on so the reader can pull that article in for you.
+// tab.url is only readable once host access has been granted (the same grant
+// the reader needs to fetch anything); without it there is simply nothing to
+// stash and the reader opens as it always did.
+chrome.action.onClicked.addListener((tab) => {
   const url = chrome.runtime.getURL('index.html')
   chrome.action.setBadgeText({ text: '' })
-  chrome.storage.local.set({ newCount: 0 })
+  const from = typeof tab?.url === 'string' ? tab.url : ''
+  const pending =
+    /^https?:/i.test(from) && !from.startsWith(url) ? { url: from, at: Date.now() } : null
+  chrome.storage.local.set({ newCount: 0, pendingUrl: pending })
   chrome.tabs.query({ url }, (tabs) => {
     if (tabs && tabs.length > 0) {
       chrome.tabs.update(tabs[0].id, { active: true })

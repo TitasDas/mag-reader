@@ -1,5 +1,6 @@
 import { Readability } from '@mozilla/readability'
 import { feedFetch } from './net.js'
+import { sanitizeHtml } from './sanitize.js'
 
 const FETCH_TIMEOUT_MS = 15000
 
@@ -20,7 +21,9 @@ function absolute(href, baseUrl) {
 // click navigates the whole reader tab away and loses the app).
 function cleanContent(html, baseUrl) {
   const holder = document.createElement('div')
-  holder.innerHTML = html
+  // Sanitize before assigning innerHTML: even on a detached node, an unsanitized
+  // <img onerror=...> can fire and run code. Scrub first, then post-process.
+  holder.innerHTML = sanitizeHtml(html)
 
   holder.querySelectorAll('img').forEach((img) => {
     // Many sites ship a placeholder src and keep the real URL in a data-*
@@ -102,32 +105,18 @@ const ARCHIVE_MIRRORS = [
   (url) => 'https://web.archive.org/web/2/' + url,
 ]
 
-// The primary snapshot URL (kept for callers/tests that want a single link).
-export function archiveUrl(url) {
-  return ARCHIVE_MIRRORS[0](url)
-}
-
 // Fetch a public archived snapshot and extract its readable content so it can be
-// shown inside the app rather than opening archive.today in a new tab. Reuses the
-// same fetch + Readability pipeline as reader mode; relative image/link URLs
-// resolve against the archive page. Falls back through the mirror list so a
-// blocked/down mirror or a missing capture on one service doesn't dead-end.
-export async function fetchArchived(url, onAttempt) {
+// shown inside the app rather than sending the reader off to another site. This
+// is the fallback when a page hands over a teaser instead of the article. Reuses
+// the same fetch + Readability pipeline; relative image/link URLs resolve
+// against the archive page. Falls back through the mirror list so a blocked or
+// down mirror, or a missing capture on one service, doesn't dead-end.
+export async function fetchArchived(url) {
   if (!url) throw new Error('no article link')
   const errors = []
   for (const mirror of ARCHIVE_MIRRORS) {
-    const target = mirror(url)
-    if (onAttempt) {
-      let host = 'archive'
-      try {
-        host = new URL(target).hostname
-      } catch {
-        /* keep default */
-      }
-      onAttempt(host)
-    }
     try {
-      return await fetchReadable(target)
+      return await fetchReadable(mirror(url))
     } catch (err) {
       errors.push(err?.message || 'failed')
     }
