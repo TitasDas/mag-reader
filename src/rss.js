@@ -1,6 +1,7 @@
 // Minimal RSS 2.0 + Atom parser built on the browser's DOMParser. No deps.
 // Returns a normalized array of article objects.
 import { feedFetch } from './net.js'
+import { sanitizeHtml } from './sanitize.js'
 
 function text(node, sel) {
   const el = node.querySelector(sel)
@@ -21,11 +22,12 @@ function toTime(str) {
   return Number.isNaN(t) ? 0 : t
 }
 
-// Strip tags to a short plain-text preview for the list view.
+// Strip tags to a short plain-text preview for the list view. Uses DOMParser
+// rather than a live element's innerHTML so untrusted markup never loads a
+// resource or fires an event handler while we extract the text.
 export function toPreview(html, max = 220) {
-  const div = document.createElement('div')
-  div.innerHTML = html || ''
-  const plain = (div.textContent || '').replace(/\s+/g, ' ').trim()
+  const doc = new DOMParser().parseFromString(html || '', 'text/html')
+  const plain = (doc.body.textContent || '').replace(/\s+/g, ' ').trim()
   return plain.length > max ? plain.slice(0, max) + '...' : plain
 }
 
@@ -51,9 +53,11 @@ export function parseFeed(xmlString, source, feedUrl) {
     // content:encoded (namespaced) is the richest body when present.
     const encoded =
       node.getElementsByTagName('content:encoded')[0]?.textContent || ''
-    const content = isAtom
-      ? text(node, 'content') || text(node, 'summary')
-      : encoded || text(node, 'description')
+    const content = sanitizeHtml(
+      isAtom
+        ? text(node, 'content') || text(node, 'summary')
+        : encoded || text(node, 'description'),
+    )
 
     return {
       id: link || `${source}:${title}`,
@@ -73,7 +77,7 @@ export function parseJsonFeed(jsonString, source, feedUrl) {
   const data = JSON.parse(jsonString)
   const items = Array.isArray(data.items) ? data.items : []
   return items.map((it) => {
-    const content = it.content_html || it.content_text || it.summary || ''
+    const content = sanitizeHtml(it.content_html || it.content_text || it.summary || '')
     const link = it.url || it.external_url || it.id || ''
     return {
       id: link || `${source}:${it.title}`,

@@ -17,9 +17,14 @@ This data never leaves your device and is not transmitted to us or anyone else.
 ## Network requests
 Readstand makes network requests only to:
 - fetch the feeds you have subscribed to, so it can show new articles;
-- when you click "Reader mode", fetch that one article page to extract a
-  readable version;
-- when you click "Archived snapshot", open that article on archive.today.
+- when you open an article, fetch that one article page to extract a readable
+  version of it;
+- if that page hands over only a teaser, fetch the same article from a public
+  archive (archive.today, or the Wayback Machine) so it can be read.
+
+When you open Readstand from the toolbar while you are on an article page, the
+address of that page is passed to the reader so the article can be loaded for
+you. It is used once, then discarded. No browsing history is read or kept.
 
 These requests go directly from your browser to the publications you chose to
 follow. Readstand does not route them through any intermediary server.

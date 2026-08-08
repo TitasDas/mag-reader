@@ -230,7 +230,7 @@ const SLIDES = [
   {
     file: 'screenshot-2-reader.png',
     title: 'A real reading experience',
-    sub: 'Reader mode extracts the clean article from any page. Adjustable text size, text-only mode, light and dark.',
+    sub: 'Every article opens in reader mode, fetched for you, nothing to click. Adjustable text size, text-only mode, light and dark.',
     theme: 'dark',
     async stage(page) {
       await page.getByText('The Long Now of the Reading Brain').click()
