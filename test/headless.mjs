@@ -530,12 +530,29 @@ try {
   await mp.goto(BASE, { waitUntil: 'domcontentloaded' })
   await mp.locator('.item').first().waitFor({ timeout: 15000 })
   check('starts on the list (reader hidden)', !(await mp.locator('.reader-title').isVisible().catch(() => false)))
+  check('filter chips ride on the phone list', (await mp.locator('.list-filters .chip').count()) === 3)
+  check('refresh is reachable without the drawer', await mp.locator('.list-refresh').isVisible())
   if (SHOTS) await mp.screenshot({ path: `${SHOTS}/phone-list.png` })
 
   await mp.locator('.item').first().click()
   await mp.locator('.reader-title').waitFor({ timeout: 5000 })
   check('tapping an article shows the reader', await mp.locator('.reader-title').isVisible())
   check('list is hidden while reading', !(await mp.locator('.item').first().isVisible().catch(() => false)))
+  check('reader actions sit in a thumb-reach bottom bar', await mp.locator('.reader-bottombar').isVisible())
+  check(
+    'the desktop action row is gone on the phone',
+    !(await mp.locator('.reader-actions').isVisible().catch(() => false))
+  )
+  // Save from the bottom bar; toggle-based so it holds whatever state the
+  // desktop suite left this article in.
+  const bbSave = mp.locator('.reader-bottombar .bb-btn').first()
+  const wasSaved = await bbSave.evaluate((el) => el.classList.contains('on'))
+  await bbSave.click()
+  check(
+    'bottom-bar Save toggles saved state',
+    (await bbSave.evaluate((el) => el.classList.contains('on'))) !== wasSaved
+  )
+  await bbSave.click() // put it back
   if (SHOTS) await mp.screenshot({ path: `${SHOTS}/phone-reader.png` })
 
   await mp.getByRole('button', { name: 'Back to list' }).click()

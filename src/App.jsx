@@ -449,6 +449,10 @@ export default function App() {
       return next
     })
   }
+  // Keep the popover on screen: it is centered on the selection, so near an
+  // edge the translateX(-50%) would push half of it out of view.
+  const clampPopLeft = (x) =>
+    Math.min(Math.max(x, 76), (typeof window !== 'undefined' ? window.innerWidth : 800) - 76)
   // Show the "Save highlight" popover when text is selected inside the reader.
   function onReaderMouseUp() {
     const s = typeof window !== 'undefined' ? window.getSelection() : null
@@ -462,8 +466,38 @@ export default function App() {
       setSel(null)
       return
     }
-    setSel({ text, top: rect.top, left: rect.left + rect.width / 2 })
+    setSel({ text, top: rect.top, left: clampPopLeft(rect.left + rect.width / 2) })
   }
+  // Touch selection never fires mouseup: on a phone you long-press and drag
+  // handles. Watch the document's selection instead and surface the same
+  // popover, debounced so it settles only after the handles stop moving. The
+  // delay also keeps a tap on the popover ahead of the clear that follows the
+  // selection collapsing.
+  useEffect(() => {
+    let timer = null
+    function onSelectionChange() {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        const el = readerRef.current
+        const s = window.getSelection()
+        const text = s && s.rangeCount ? s.toString().trim() : ''
+        if (!text || !el || !el.contains(s.anchorNode)) {
+          if (text === '') setSel(null)
+          return
+        }
+        if (text.length < 3) return
+        const rect = s.getRangeAt(0).getBoundingClientRect()
+        if (!rect || (!rect.width && !rect.height)) return
+        setSel({ text, top: rect.top, left: clampPopLeft(rect.left + rect.width / 2) })
+      }, 350)
+    }
+    document.addEventListener('selectionchange', onSelectionChange)
+    return () => {
+      document.removeEventListener('selectionchange', onSelectionChange)
+      if (timer) clearTimeout(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   function saveHighlight() {
     if (!sel) return
     addNote({ type: 'highlight', text: sel.text, ...articleMeta(selected) })
@@ -1033,23 +1067,50 @@ export default function App() {
       </aside>
 
       <section className="list">
-        <div className="list-head">
-          <button
-            className="icon-btn nav-toggle"
-            onClick={() => setDrawerOpen(true)}
-            aria-label="Open sources"
-          >
-            ☰
-          </button>
-          <input
-            className="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search articles..."
-          />
-          <button className="link" onClick={markAllRead} disabled={!visible.length}>
-            mark all read
-          </button>
+        <div className="list-top">
+          <div className="list-head">
+            <button
+              className="icon-btn nav-toggle"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open sources"
+            >
+              ☰
+            </button>
+            <input
+              className="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search articles..."
+            />
+            <button
+              className="icon-btn list-refresh"
+              onClick={() => loadArticles(feeds)}
+              disabled={loading}
+              aria-label="Refresh feeds"
+            >
+              ↻
+            </button>
+            <button className="link mark-read" onClick={markAllRead} disabled={!visible.length}>
+              mark all read
+            </button>
+          </div>
+          {/* When the sidebar is a drawer, the filters ride on the list itself so
+              switching to Unread or Saved never costs a drawer round-trip. */}
+          <div className="list-filters">
+            {FILTERS.map((f) => (
+              <button
+                key={f.key}
+                className={`chip ${filter === f.key ? 'active' : ''}`}
+                onClick={() => setFilter(f.key)}
+              >
+                {f.label}
+                {f.key === 'unread' && unreadCount > 0 ? ` (${unreadCount})` : ''}
+              </button>
+            ))}
+            <button className="link mark-read" onClick={markAllRead} disabled={!visible.length}>
+              mark all read
+            </button>
+          </div>
         </div>
 
         {isExtension && !hostGranted ? (
@@ -1246,6 +1307,64 @@ export default function App() {
               dangerouslySetInnerHTML={{ __html: bodyHtml }}
             />
           </article>
+        )}
+        {/* Phone: the reader actions live in a fixed bar at the bottom of the
+            screen, in thumb reach and available at any scroll depth. Hidden on
+            desktop, where the inline action row above the article shows instead. */}
+        {selected && (
+          <div className="reader-bottombar">
+            <button
+              className={`bb-btn ${savedIds[selected.id] ? 'on' : ''}`}
+              onClick={() => toggleSaved(selected)}
+              aria-label={savedIds[selected.id] ? 'Unsave article' : 'Save article'}
+            >
+              <span className="bb-icon" aria-hidden="true">{savedIds[selected.id] ? '★' : '☆'}</span>
+              Save
+            </button>
+            <button
+              className={`bb-btn ${noteDraft ? 'on' : ''}`}
+              onClick={() => setNoteDraft((d) => (d ? null : { text: '', type: 'learned' }))}
+              aria-label="Jot a note about this article"
+            >
+              <span className="bb-icon" aria-hidden="true">✎</span>
+              Note
+            </button>
+            <button
+              className={`bb-btn ${!showImages ? 'on' : ''}`}
+              onClick={toggleImages}
+              aria-pressed={!showImages}
+              aria-label={showImages ? 'Switch to text only' : 'Show images again'}
+            >
+              <span className="bb-icon" aria-hidden="true">Aa</span>
+              Text
+            </button>
+            <button
+              className="bb-btn"
+              onClick={() => changeZoom(-ZOOM_STEP)}
+              disabled={zoom <= ZOOM_MIN}
+              aria-label="Decrease text size"
+            >
+              <span className="bb-icon" aria-hidden="true">A−</span>
+              Smaller
+            </button>
+            <button
+              className="bb-btn"
+              onClick={() => changeZoom(ZOOM_STEP)}
+              disabled={zoom >= ZOOM_MAX}
+              aria-label="Increase text size"
+            >
+              <span className="bb-icon" aria-hidden="true">A+</span>
+              Larger
+            </button>
+            <button
+              className="bb-btn"
+              onClick={() => openExternal(selected.link)}
+              aria-label="Open the original article in your browser"
+            >
+              <span className="bb-icon" aria-hidden="true">↗</span>
+              Open
+            </button>
+          </div>
         )}
       </main>
 
