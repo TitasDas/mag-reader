@@ -106,12 +106,92 @@ Same `readstand-<version>.zip`. Register (free) at https://partner.microsoft.com
 - AppImageHub: submit the AppImage listing at https://appimage.github.io.
 - AUR (optional): a `PKGBUILD` that pulls the release `.AppImage` or builds from source.
 
-## Mobile (optional)
-The frontend is already responsive and Tauri v2 targets mobile from the same project.
-- Fastest, free: the PWA is installable on Android (Chrome) and iOS (Safari) via Add to Home Screen. No store needed.
-- Android store: either `tauri android init && tauri android build` (needs Android Studio + SDK/NDK + JDK; buildable on Linux) to get an `.aab`, or wrap the hosted PWA as a Trusted Web Activity with PWABuilder/Bubblewrap. Then Google Play ($25 one-time).
-- iOS store: needs a Mac + Xcode + Apple Developer ($99/year), then `tauri ios init && tauri ios build`. Apple may push back on thin web wrappers, so lean on the native shell. Otherwise the Safari home-screen PWA serves iPhone/iPad without the App Store.
-On Tauri mobile, feeds fetch natively (the HTTP plugin), so no proxy is needed, same as desktop.
+## Google Play (Android)
+The Android app is the same codebase built native by Tauri v2. Feeds fetch through
+the HTTP plugin, so it is local-first like the desktop build: no proxy, no hosted
+PWA, nothing to run. The phone layout is already in the app and covered by e2e:
+single-pane drill-down, filter chips on the list, a bottom action bar in the
+reader, and touch text-selection for highlights.
+
+One Play policy gate to plan around before picking a date: personal developer
+accounts created after Nov 13, 2023 must run a closed test with at least 12
+testers for 14 days before they can apply for production access. A brand-new
+account for this app hits that gate, so recruit testers early (friends, or the
+r/AndroidClosedTesting swap crowd) and treat the closed test as the first
+release. Organization accounts are exempt.
+
+### One-time toolchain
+The SDK already lives at `~/Android/Sdk` (platforms, build-tools, emulator
+images). Still missing on this machine: JDK 17 (system Java is 11) and the NDK.
+```bash
+sudo apt install openjdk-17-jdk
+# sdkmanager is under ~/Android/Sdk/cmdline-tools/*/bin; install cmdline-tools
+# via Android Studio's SDK Manager if it is absent.
+sdkmanager "ndk;26.1.10909125"
+rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+export ANDROID_HOME="$HOME/Android/Sdk"
+export NDK_HOME="$ANDROID_HOME/ndk/26.1.10909125"
+```
+
+### Project setup (once)
+```bash
+npx tauri android init   # generates src-tauri/gen/android; applicationId comes
+                         # from the identifier in tauri.conf.json (com.titasdas.readstand)
+npx tauri icon public/icons/icon-512.png   # regenerates icons, incl. Android mipmaps
+```
+Commit the generated `src-tauri/gen/android`, except the signing files below.
+
+### Dev loop
+`npx tauri android dev` runs the app on a booted emulator (system images are
+already installed) or a USB-connected device. Before the first store upload, walk
+the same smoke test as the extension: feeds load, an article opens with full text,
+a long-press selection offers Save highlight, the bottom bar saves and zooms.
+
+### Signing (once)
+```bash
+keytool -genkey -v -keystore ~/keystores/readstand-upload.jks \
+  -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+```
+Create `src-tauri/gen/android/keystore.properties` (never committed):
+```
+password=<keystore password>
+keyAlias=upload
+storeFile=/home/td/keystores/readstand-upload.jks
+```
+and wire it into `app/build.gradle.kts` as the release `signingConfig` (the Tauri
+"Distribute > Google Play" guide has the exact snippet). Keep the keystore out of
+the repo and backed up. It is only the upload key: Play App Signing holds the app
+key, and a lost upload key can be reset through support.
+
+### Build and upload
+```bash
+npx tauri android build --aab
+# -> src-tauri/gen/android/app/build/outputs/bundle/universalRelease/app-universal-release.aab
+```
+In the Play Console ($25 one-time): create the app, upload the .aab to a closed
+testing track, then fill in:
+- Store listing: reuse `store/listing.md` copy under the same rule as Chrome, no
+  third-party brand names. Play needs two assets the Chrome set lacks: phone
+  screenshots at a tall aspect (1080x1920 works) and a 1024x500 feature graphic.
+- Privacy policy: https://github.com/TitasDas/mag-reader/blob/master/PRIVACY.md
+- Data safety: collects nothing, shares nothing, everything stays on-device.
+- Content rating questionnaire: productivity tool, no ads, notes never leave the
+  device so there is no user-generated-content sharing.
+Version bumps: versionName follows `src-tauri/tauri.conf.json`, and Tauri derives
+the strictly-increasing versionCode Play requires from it, so the usual
+four-file bump covers Android too.
+
+Alternative, kept for reference: wrap a hosted PWA as a Trusted Web Activity with
+PWABuilder or Bubblewrap. Not the main path because it depends on hosting the PWA
+and the proxy, while the Tauri app needs neither.
+
+## iOS (parked)
+Needs a Mac + Xcode + Apple Developer ($99/year), then `tauri ios init && tauri
+ios build`. Apple may push back on thin web wrappers, so lean on the native
+shell. Until then the Safari home-screen PWA serves iPhone and iPad without the
+App Store, once the PWA is hosted (next section).
 
 ## PWA hosting (to actually reach phones/tablets)
 1. Deploy the CORS proxy in `proxy/worker.js` (Cloudflare Worker). It refuses loopback/private/link-local and encoded-IP hosts and re-checks every redirect hop, so it can't be pointed at internal addresses.
