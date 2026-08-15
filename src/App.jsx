@@ -27,6 +27,27 @@ const ZOOM_MAX = 2
 const ZOOM_STEP = 0.1
 const clampZoom = (z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z * 10) / 10))
 
+// Reading column width: how wide the article measure may grow. 'full' lets it
+// use the whole pane, for the people who hate margins.
+const WIDTHS = [
+  ['narrow', 'Narrow'],
+  ['medium', 'Medium'],
+  ['wide', 'Wide'],
+  ['full', 'Full'],
+]
+const WIDTH_MAX = { narrow: '560px', medium: '680px', wide: '900px', full: 'none' }
+
+// The list pane is resizable by dragging the divider next to it. The clamp
+// also leaves the reader a readable minimum on narrower screens.
+const LIST_W_DEFAULT = 360
+const LIST_W_MIN = 240
+const LIST_W_MAX = 560
+const clampListW = (w) => {
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1280
+  const max = Math.min(LIST_W_MAX, vw - 380)
+  return Math.max(LIST_W_MIN, Math.min(max, Math.round(w)))
+}
+
 // Reader mode runs by itself the moment an article is selected. The short delay
 // means flicking down the list with j/k doesn't fire a fetch for every headline
 // you pass on the way.
@@ -96,6 +117,9 @@ export default function App() {
   const [extracted, setExtracted] = useState({})
   const [showImages, setShowImages] = useState(true)
   const [zoom, setZoom] = useState(1) // reader text scale
+  const [readerWidth, setReaderWidth] = useState('medium') // article column preset
+  const [listW, setListW] = useState(LIST_W_DEFAULT) // list pane width in px
+  const listDrag = useRef(null) // { startX, startW } while the divider is being dragged
   const [mobilePane, setMobilePane] = useState('list') // 'list' | 'reader' (phone)
   const [drawerOpen, setDrawerOpen] = useState(false) // sources drawer (tablet/phone)
   const [hostGranted, setHostGranted] = useState(true) // extension: host access granted?
@@ -176,6 +200,55 @@ export default function App() {
     })
   }, [])
 
+  const changeWidth = useCallback((key) => {
+    setReaderWidth(key)
+    store.set('readerWidth', key)
+  }, [])
+
+  // Ctrl+scroll (or a trackpad pinch, which browsers report the same way) over
+  // the reader zooms the text instead of the whole page. Attached natively:
+  // React wheel listeners are passive, so they can't preventDefault the
+  // browser's own zoom.
+  useEffect(() => {
+    const el = readerRef.current
+    if (!el) return
+    function onWheel(e) {
+      if (!e.ctrlKey) return
+      e.preventDefault()
+      changeZoom(e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [changeZoom])
+
+  // ---- pane resize -----------------------------------------------------------
+  // Drag the divider between the list and the reader to rebalance the panes.
+  // Pointer capture keeps the drag alive even when the cursor leaves the 6px
+  // strip. Double-click puts the default split back.
+  function onDividerDown(e) {
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    listDrag.current = { startX: e.clientX, startW: listW }
+  }
+  function onDividerMove(e) {
+    const d = listDrag.current
+    if (!d) return
+    setListW(clampListW(d.startW + e.clientX - d.startX))
+  }
+  function onDividerUp() {
+    if (!listDrag.current) return
+    listDrag.current = null
+    setListW((w) => {
+      store.set('listWidth', w)
+      return w
+    })
+  }
+  function setListWidth(w) {
+    const next = clampListW(w)
+    setListW(next)
+    store.set('listWidth', next)
+  }
+
   // ---- data loading --------------------------------------------------------
   const loadArticles = useCallback(async (feedList) => {
     setLoading(true)
@@ -234,21 +307,26 @@ export default function App() {
 
   useEffect(() => {
     ;(async () => {
-      const [savedFeeds, read, saved, imgs, savedZoom, savedReading, savedNotes] = await Promise.all([
-        store.get('feeds', null),
-        store.get('readIds', {}),
-        store.get('savedIds', {}),
-        store.get('showImages', true),
-        store.get('readerZoom', 1),
-        store.get('reading', {}),
-        store.get('notes', []),
-      ])
+      const [savedFeeds, read, saved, imgs, savedZoom, savedReading, savedNotes, savedWidth, savedListW] =
+        await Promise.all([
+          store.get('feeds', null),
+          store.get('readIds', {}),
+          store.get('savedIds', {}),
+          store.get('showImages', true),
+          store.get('readerZoom', 1),
+          store.get('reading', {}),
+          store.get('notes', []),
+          store.get('readerWidth', 'medium'),
+          store.get('listWidth', LIST_W_DEFAULT),
+        ])
       const feedList = savedFeeds && savedFeeds.length ? savedFeeds : DEFAULT_FEEDS
       setFeeds(feedList)
       setReadIds(read || {})
       setSavedIds(saved || {})
       setShowImages(imgs !== false)
       setZoom(clampZoom(Number(savedZoom) || 1))
+      setReaderWidth(WIDTH_MAX[savedWidth] ? savedWidth : 'medium')
+      setListW(clampListW(Number(savedListW) || LIST_W_DEFAULT))
       setReading(savedReading || {})
       setNotes(Array.isArray(savedNotes) ? savedNotes : [])
       // Persist the defaults on first run so the background worker can see them.
@@ -696,6 +774,20 @@ export default function App() {
         document.querySelector('.search')?.focus()
         return
       }
+      // Text size from the keyboard, mirroring the A−/A+ buttons: - and = (+)
+      // step it, 0 puts it back.
+      if (e.key === '-' || e.key === '_') {
+        changeZoom(-ZOOM_STEP)
+        return
+      }
+      if (e.key === '=' || e.key === '+') {
+        changeZoom(ZOOM_STEP)
+        return
+      }
+      if (e.key === '0') {
+        changeZoom(0)
+        return
+      }
       if (e.key === 'j' || e.key === 'k') {
         if (!visible.length) return
         const idx = visible.findIndex((a) => a.id === selectedId)
@@ -891,7 +983,7 @@ export default function App() {
 
   // ---- render --------------------------------------------------------------
   return (
-    <div className="app" data-pane={mobilePane}>
+    <div className="app" data-pane={mobilePane} style={{ '--list-w': `${listW}px` }}>
       <div
         className={`drawer-backdrop ${drawerOpen ? 'show' : ''}`}
         onClick={() => setDrawerOpen(false)}
@@ -1161,7 +1253,33 @@ export default function App() {
         )}
       </section>
 
-      <main className="reader" ref={readerRef} onScroll={onReaderScroll}>
+      <div
+        className="pane-resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize the article list"
+        aria-valuenow={listW}
+        aria-valuemin={LIST_W_MIN}
+        aria-valuemax={LIST_W_MAX}
+        tabIndex={0}
+        onPointerDown={onDividerDown}
+        onPointerMove={onDividerMove}
+        onPointerUp={onDividerUp}
+        onPointerCancel={onDividerUp}
+        onDoubleClick={() => setListWidth(LIST_W_DEFAULT)}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft') setListWidth(listW - 16)
+          else if (e.key === 'ArrowRight') setListWidth(listW + 16)
+        }}
+        title="Drag to resize the list. Double-click to reset."
+      />
+
+      <main
+        className="reader"
+        ref={readerRef}
+        onScroll={onReaderScroll}
+        style={{ '--reader-max': WIDTH_MAX[readerWidth] || WIDTH_MAX.medium }}
+      >
         <div className="reader-topbar">
           <button
             className="icon-btn"
@@ -1215,33 +1333,49 @@ export default function App() {
               >
                 ✎ Note
               </button>
-              <div className="zoom" role="group" aria-label="Text size">
-                <button
-                  className="btn ghost zoom-btn"
-                  onClick={() => changeZoom(-ZOOM_STEP)}
-                  disabled={zoom <= ZOOM_MIN}
-                  aria-label="Decrease text size"
-                  title="Smaller text"
-                >
-                  A−
-                </button>
-                <button
-                  className="btn ghost zoom-btn zoom-level"
-                  onClick={() => changeZoom(0)}
-                  aria-label="Reset text size"
-                  title="Reset text size"
-                >
-                  {Math.round(zoom * 100)}%
-                </button>
-                <button
-                  className="btn ghost zoom-btn"
-                  onClick={() => changeZoom(ZOOM_STEP)}
-                  disabled={zoom >= ZOOM_MAX}
-                  aria-label="Increase text size"
-                  title="Larger text"
-                >
-                  A+
-                </button>
+              {/* Width + zoom ride together on the right so a wrap keeps them
+                  side by side instead of stranding one on its own line. */}
+              <div className="reader-tools">
+                <div className="seg width-seg" role="group" aria-label="Column width">
+                  {WIDTHS.map(([key, label]) => (
+                    <button
+                      key={key}
+                      className={readerWidth === key ? 'active' : ''}
+                      onClick={() => changeWidth(key)}
+                      title={`${label} reading column`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="zoom" role="group" aria-label="Text size">
+                  <button
+                    className="btn ghost zoom-btn"
+                    onClick={() => changeZoom(-ZOOM_STEP)}
+                    disabled={zoom <= ZOOM_MIN}
+                    aria-label="Decrease text size"
+                    title="Smaller text (-)"
+                  >
+                    A−
+                  </button>
+                  <button
+                    className="btn ghost zoom-btn zoom-level"
+                    onClick={() => changeZoom(0)}
+                    aria-label="Reset text size"
+                    title="Reset text size (0)"
+                  >
+                    {Math.round(zoom * 100)}%
+                  </button>
+                  <button
+                    className="btn ghost zoom-btn"
+                    onClick={() => changeZoom(ZOOM_STEP)}
+                    disabled={zoom >= ZOOM_MAX}
+                    aria-label="Increase text size"
+                    title="Larger text (+)"
+                  >
+                    A+
+                  </button>
+                </div>
               </div>
             </div>
             {noteDraft && (

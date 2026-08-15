@@ -295,6 +295,45 @@ try {
   check('reset returns to 100%', (await page.getByRole('button', { name: 'Reset text size' }).innerText()) === '100%')
   check('reset restores base size', Math.abs((await fontSize()) - base) < 0.5)
 
+  console.log('\nKeyboard text zoom')
+  const zoomLevel = () => page.getByRole('button', { name: 'Reset text size' }).innerText()
+  await page.keyboard.press('=')
+  check('= steps text up', (await zoomLevel()) === '110%')
+  await page.keyboard.press('-')
+  check('- steps text back down', (await zoomLevel()) === '100%')
+  await page.keyboard.press('=')
+  await page.keyboard.press('0')
+  check('0 resets text size', (await zoomLevel()) === '100%')
+
+  console.log('\nReading column width')
+  const articleW = () =>
+    page.locator('.reader > article').evaluate((el) => el.getBoundingClientRect().width)
+  const readerCap = () =>
+    page.locator('.reader').evaluate((el) => el.style.getPropertyValue('--reader-max'))
+  const wMedium = await articleW()
+  await page.getByRole('button', { name: 'Narrow', exact: true }).click()
+  const wNarrow = await articleW()
+  check(`Narrow tightens the column (${wNarrow}px < ${wMedium}px)`, wNarrow < wMedium)
+  await page.getByRole('button', { name: 'Full', exact: true }).click()
+  const wFull = await articleW()
+  check(`Full stretches the column (${wFull}px > ${wNarrow}px)`, wFull > wNarrow)
+  check('Full lifts the width cap', (await readerCap()) === 'none')
+  await page.getByRole('button', { name: 'Medium', exact: true }).click()
+  check('Medium restores the default cap', (await readerCap()) === '680px')
+
+  console.log('\nResizable list pane')
+  const listWidth = () => page.locator('.list').evaluate((el) => el.getBoundingClientRect().width)
+  const w0 = await listWidth()
+  const rBox = await page.locator('.pane-resizer').boundingBox()
+  await page.mouse.move(rBox.x + rBox.width / 2, rBox.y + 300)
+  await page.mouse.down()
+  await page.mouse.move(rBox.x + rBox.width / 2 - 80, rBox.y + 300, { steps: 4 })
+  await page.mouse.up()
+  const w1 = await listWidth()
+  check(`dragging the divider narrows the list (${w0}px -> ${w1}px)`, Math.abs(w1 - (w0 - 80)) < 2)
+  await page.locator('.pane-resizer').dblclick()
+  check('double-click restores the default split', Math.abs((await listWidth()) - 360) < 2)
+
   console.log('\nContinue reading tracker')
   // Open an article and wait for the extracted text, so the body is long enough
   // to scroll.
