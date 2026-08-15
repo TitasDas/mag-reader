@@ -40,7 +40,7 @@ body {
 
 .app {
   display: grid;
-  grid-template-columns: var(--sidebar-w) var(--list-w) 1fr;
+  grid-template-columns: var(--sidebar-w) var(--list-w) 6px 1fr;
   height: 100vh;
   height: 100dvh; /* account for mobile browser chrome */
   overflow: hidden;
@@ -49,6 +49,21 @@ body {
 .list,
 .reader {
   overscroll-behavior: contain;
+}
+
+/* Divider between the list and the reader: drag it to rebalance the panes.
+   Invisible until touched; the list's own right border draws the line. */
+.pane-resizer {
+  cursor: col-resize;
+  background: none;
+  touch-action: none;
+  margin-left: -1px; /* sit on the list border so the grab area straddles it */
+}
+.pane-resizer:hover,
+.pane-resizer:active,
+.pane-resizer:focus-visible {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  outline: none;
 }
 
 /* Icon buttons + mobile nav affordances (hidden on desktop, shown by the
@@ -446,7 +461,7 @@ body {
   padding: 40px 48px;
 }
 .reader article {
-  max-width: 680px;
+  max-width: var(--reader-max, 680px);
   margin: 0 auto;
 }
 .reader-meta {
@@ -506,12 +521,21 @@ body {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
+/* Width picker + zoom: one right-aligned cluster, so wrapping the action row
+   never strands one of them alone on the left. */
+.reader-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 /* Text-size zoom control: a tight little segmented group. */
 .zoom {
   display: inline-flex;
   align-items: stretch;
   gap: 0;
-  margin-left: auto;
 }
 .zoom-btn {
   padding: 8px 10px;
@@ -842,7 +866,7 @@ body {
 /* Tablet and below: sidebar becomes a slide-in drawer; list + reader remain. */
 @media (max-width: 1023px) {
   .app {
-    grid-template-columns: var(--list-w) 1fr;
+    grid-template-columns: var(--list-w) 6px 1fr;
   }
   .sidebar {
     position: fixed;
@@ -906,6 +930,9 @@ body {
 @media (max-width: 639px) {
   .app {
     grid-template-columns: 1fr;
+  }
+  .pane-resizer {
+    display: none;
   }
   .list,
   .reader {
