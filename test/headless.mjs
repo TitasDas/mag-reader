@@ -563,6 +563,50 @@ try {
   check('Escape blurs the search box', await page.locator('.search').evaluate((el) => el !== document.activeElement))
   await page.locator('.search').fill('') // clear the query for the sections below
 
+  console.log('\nSources management')
+  const feedTitles = () =>
+    page.locator('.source-row .source').evaluateAll((els) => els.map((el) => el.textContent.trim()))
+  check(
+    'add-feed form sits above the source list',
+    (await page.locator('.add-feed').boundingBox()).y <
+      (await page.locator('.source-row').first().boundingBox()).y
+  )
+  // Reorder: drag the first source onto the lower half of the second, which
+  // should swap them.
+  const orderBefore = await feedTitles()
+  const secondRow = page.locator('.source-row').nth(1)
+  const targetBox = await secondRow.boundingBox()
+  await page.locator('.source-row').first().dragTo(secondRow, {
+    targetPosition: { x: targetBox.width / 2, y: targetBox.height * 0.8 },
+  })
+  const orderAfter = await feedTitles()
+  check(
+    `dragging swaps the first two sources (${orderBefore[0]} <-> ${orderBefore[1]})`,
+    orderAfter[0] === orderBefore[1] && orderAfter[1] === orderBefore[0]
+  )
+  check('the rest of the order is untouched', orderAfter.slice(2).join('|') === orderBefore.slice(2).join('|'))
+  // The new order survives a reload.
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.locator('.source-row').first().waitFor({ timeout: 15000 })
+  check('reordered sources persist across reload', (await feedTitles())[0] === orderBefore[1])
+  // Delete: the ✕ reveals on hover and unsubscribes in one click.
+  const removeBtn = page.locator('.source-row').first().locator('.remove')
+  const opacityOf = (loc) => loc.evaluate((el) => getComputedStyle(el).opacity)
+  check('remove button is hidden until hover', (await opacityOf(removeBtn)) === '0')
+  await page.locator('.source-row').first().hover()
+  check('remove button appears on hover', (await opacityOf(removeBtn)) === '1')
+  const countBefore = (await feedTitles()).length
+  const removedTitle = (await feedTitles())[0]
+  await removeBtn.click()
+  await page.waitForFunction(
+    (n) => document.querySelectorAll('.source-row').length === n - 1,
+    countBefore,
+    { timeout: 5000 }
+  )
+  const titlesLeft = await feedTitles()
+  check('one click removes the source', titlesLeft.length === countBefore - 1)
+  check('the right source was removed', !titlesLeft.includes(removedTitle))
+
   console.log('\nPhone layout (drill-down navigation)')
   const mp = await context.newPage()
   await mp.setViewportSize({ width: 390, height: 844 })

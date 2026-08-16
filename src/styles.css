@@ -160,6 +160,37 @@ body {
 .source-row {
   display: flex;
   align-items: center;
+  /* The drag handle hangs in the sidebar's left padding, keeping feed titles
+     flush with the "All sources" button above them. */
+  margin-left: -12px;
+}
+/* Reordering: the row is draggable; the handle and the ✕ stay out of the way
+   until the row is hovered (always shown on touch screens, which can't hover). */
+.drag-handle {
+  flex: none;
+  width: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: -2px;
+  text-align: center;
+  cursor: grab;
+  opacity: 0;
+  user-select: none;
+}
+.source-row:hover .drag-handle,
+.source-row:focus-within .drag-handle {
+  opacity: 0.7;
+}
+.source-row.dragging {
+  opacity: 0.45;
+}
+/* Insertion line for the spot the drag would land in. Drawn with an inset
+   shadow so rows don't shift while dragging over them. */
+.source-row.drop-before {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+.source-row.drop-after {
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 .source {
   flex: 1;
@@ -189,14 +220,27 @@ body {
   cursor: pointer;
   font-size: 12px;
   padding: 4px 6px;
+  opacity: 0;
+}
+.source-row:hover .remove,
+.source-row:focus-within .remove,
+.remove:focus-visible {
+  opacity: 1;
 }
 .remove:hover {
   color: var(--accent);
 }
+/* No hover on touch screens: keep the reorder handle and ✕ always visible. */
+@media (pointer: coarse) {
+  .drag-handle,
+  .remove {
+    opacity: 0.7;
+  }
+}
 .add-feed {
   display: flex;
   gap: 4px;
-  margin-top: 8px;
+  margin: 2px 0 8px;
 }
 .add-feed input {
   flex: 1;

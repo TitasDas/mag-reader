@@ -111,7 +111,8 @@ export default function App() {
   const [addStatus, setAddStatus] = useState(null) // {type:'loading'|'error'|'ok', msg}
   const [feedChoices, setFeedChoices] = useState(null) // [{url,title}] when >1 found
   const [noFeedUrl, setNoFeedUrl] = useState(null) // article URL to offer reading once when no feed found
-  const [showManage, setShowManage] = useState(false)
+  const [dragUrl, setDragUrl] = useState(null) // url of the source being dragged
+  const [dropAt, setDropAt] = useState(null) // index the drag would drop before
   const fileRef = useRef(null)
   // id -> { status:'loading'|'done'|'error', html?, error?, via?:'page'|'archive' }
   const [extracted, setExtracted] = useState({})
@@ -763,12 +764,11 @@ export default function App() {
         if (sel) setSel(null)
         else if (noteDraft) setNoteDraft(null)
         else if (showNotes) setShowNotes(false)
-        else if (showManage) setShowManage(false)
         else if (drawerOpen) setDrawerOpen(false)
         else goBack()
         return
       }
-      if (showNotes || showManage) return // modals own the keyboard, except Escape
+      if (showNotes) return // the modal owns the keyboard, except Escape
       if (e.key === '/') {
         e.preventDefault()
         document.querySelector('.search')?.focus()
@@ -974,11 +974,45 @@ export default function App() {
       e.target.value = '' // let the same file be re-imported
     }
   }
-  function removeFeed(url) {
-    const next = feeds.filter((f) => f.url !== url)
+  function removeFeed(feed) {
+    const next = feeds.filter((f) => f.url !== feed.url)
     persistFeeds(next)
-    if (sourceFilter === url) setSourceFilter(null)
+    if (sourceFilter === feed.url) setSourceFilter(null)
     loadArticles(next)
+  }
+
+  // ---- source reordering -----------------------------------------------------
+  // Drag a source row to move it up or down the sidebar. The order is just the
+  // feeds array, so dropping persists it like any other feed change.
+  function onFeedDragStart(e, url) {
+    setDragUrl(url)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', url) // Firefox refuses to drag without data
+  }
+  // Track which gap the pointer is over: above the row's midpoint inserts
+  // before it, below inserts after.
+  function onFeedDragOver(e, idx) {
+    if (!dragUrl) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    const r = e.currentTarget.getBoundingClientRect()
+    setDropAt(e.clientY < r.top + r.height / 2 ? idx : idx + 1)
+  }
+  function onFeedDrop(e) {
+    e.preventDefault()
+    if (dragUrl == null || dropAt == null) return endFeedDrag()
+    const from = feeds.findIndex((f) => f.url === dragUrl)
+    if (from !== -1 && dropAt !== from && dropAt !== from + 1) {
+      const next = feeds.slice()
+      const [moved] = next.splice(from, 1)
+      next.splice(from < dropAt ? dropAt - 1 : dropAt, 0, moved)
+      persistFeeds(next)
+    }
+    endFeedDrag()
+  }
+  function endFeedDrag() {
+    setDragUrl(null)
+    setDropAt(null)
   }
 
   // ---- render --------------------------------------------------------------
@@ -1046,34 +1080,7 @@ export default function App() {
         <div className="sources">
           <div className="sources-head">
             <span>Sources</span>
-            <button className="link" onClick={() => setShowManage((v) => !v)}>
-              {showManage ? 'done' : 'manage'}
-            </button>
           </div>
-          <button
-            className={`source ${!sourceFilter ? 'active' : ''}`}
-            onClick={() => chooseSource(null)}
-          >
-            All sources
-          </button>
-          {feeds.map((f) => (
-            <div key={f.url} className="source-row">
-              <button
-                className={`source ${sourceFilter === f.url ? 'active' : ''}`}
-                onClick={() => chooseSource(f.url)}
-                title={f.url}
-              >
-                {f.title}
-                {errors[f.url] ? <span className="warn" title={errors[f.url]}> ⚠</span> : null}
-              </button>
-              {showManage && (
-                <button className="remove" onClick={() => removeFeed(f.url)} title="Remove feed">
-                  ✕
-                </button>
-              )}
-            </div>
-          ))}
-
           <form className="add-feed" onSubmit={addFeed}>
             <input
               value={newFeedUrl}
@@ -1127,6 +1134,45 @@ export default function App() {
               </button>
             </div>
           )}
+          <button
+            className={`source ${!sourceFilter ? 'active' : ''}`}
+            onClick={() => chooseSource(null)}
+          >
+            All sources
+          </button>
+          {feeds.map((f, i) => (
+            <div
+              key={f.url}
+              className={`source-row ${dragUrl === f.url ? 'dragging' : ''} ${
+                dropAt === i ? 'drop-before' : ''
+              } ${dropAt === i + 1 && i === feeds.length - 1 ? 'drop-after' : ''}`}
+              draggable
+              onDragStart={(e) => onFeedDragStart(e, f.url)}
+              onDragOver={(e) => onFeedDragOver(e, i)}
+              onDrop={onFeedDrop}
+              onDragEnd={endFeedDrag}
+            >
+              <span className="drag-handle" title="Drag to reorder" aria-hidden="true">
+                ⋮⋮
+              </span>
+              <button
+                className={`source ${sourceFilter === f.url ? 'active' : ''}`}
+                onClick={() => chooseSource(f.url)}
+                title={f.url}
+              >
+                {f.title}
+                {errors[f.url] ? <span className="warn" title={errors[f.url]}> ⚠</span> : null}
+              </button>
+              <button
+                className="remove"
+                onClick={() => removeFeed(f)}
+                title={`Unsubscribe from ${f.title}`}
+                aria-label={`Unsubscribe from ${f.title}`}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
         </div>
 
         <div className="sidebar-footer">
