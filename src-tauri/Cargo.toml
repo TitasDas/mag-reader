@@ -1,6 +1,6 @@
 [package]
 name = "readstand"
-version = "0.1.3"
+version = "0.1.4"
 description = "Readstand: a clean, unified feed of the magazines and blogs you follow."
 authors = ["TitasDas"]
 edition = "2021"
