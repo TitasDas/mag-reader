@@ -1,3 +1,5 @@
+The newer, free-to-use proprietary version adds connected stories, offline article saving, Markdown/HTML downloads, concept maps, a My learning overview, and library backup/restore; its source is maintained privately.
+
 # Readstand
 
 **Read the magazines and blogs you follow on purpose, and keep what you learn.**
