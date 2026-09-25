@@ -19,7 +19,7 @@ Aimed to be a calm, private reader for the articles and blogs you like to read o
 
 *Read, highlight a line, jot what you learned, export to Markdown. That is the whole loop.*
 
-[Watch the full walkthrough](https://implantintelligence.com/p/readstand#usage-demo) (3 min 38 sec, with sound, captions and chapters): following a source, reader controls, continue reading, offline copies, notes, story mode, concept maps and library backup.
+[Watch the narrated walkthrough](https://implantintelligence.com/p/readstand#usage-demo) (3 min 39 sec, with captions and chapters): following a source, reader controls, continue reading, offline copies, notes, story mode, concept maps and library backup.
 
 ![Readstand, light theme](screenshots/desktop-light.png)
 
