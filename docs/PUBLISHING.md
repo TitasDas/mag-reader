@@ -158,7 +158,7 @@ Create `src-tauri/gen/android/keystore.properties` (never committed):
 ```
 password=<keystore password>
 keyAlias=upload
-storeFile=~/keystores/readstand-upload.jks
+storeFile=/path/to/readstand-upload.jks
 ```
 and wire it into `app/build.gradle.kts` as the release `signingConfig` (the Tauri
 "Distribute > Google Play" guide has the exact snippet). Keep the keystore out of
